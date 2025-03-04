@@ -83,10 +83,10 @@
 
       <ul class="radios">
         <li>
-          <label><input type="radio" name="type" value="6_chan_energy_meter" /> 6 Channel Energy Meter</label>
+          <label><esp-web-install-button manifest="/manifest_6_chan_energy_meter.json"></esp-web-install-button><button slot="activate">6 Channel Energy Meter</button></label>
         </li>
         <li>
-          <label><input type="radio" name="type" value="secplus_gdo" /> Security+ Garage Door Opener</label>
+          <label><esp-web-install-button manifest="/manifest_secplus_gdo.json"></esp-web-install-button><button slot="activate">Security+ Garage Door Opener</button></label>
         </li>
       </ul>
       <p class="button-row" align="center">
@@ -96,24 +96,6 @@
       <div class="footer">
         Installer powered by <a href="https://esphome.github.io/esp-web-tools/">ESP Web Tools</a>.
     </div>
-<script>
-  document.addEventListener("DOMContentLoaded", () => {
-    const defaultRadio = document.querySelector('input[name="type"]:checked');
-    if (defaultRadio) {
-      const button = document.querySelector('esp-web-install-button');
-      button.manifest = `./manifest_${defaultRadio.value}.json`;
-      button.classList.remove('invisible');
-    }
 
-    // Then attach the *change* event as well
-    document.querySelectorAll('input[name="type"]').forEach(radio =>
-      radio.addEventListener("change", () => {
-        const button = document.querySelector('esp-web-install-button');
-        button.manifest = `./manifest_${radio.value}.json`;
-        button.classList.remove('invisible');
-      })
-    );
-  });
-</script>
   </body>
 </html>
