@@ -98,15 +98,24 @@
       <div class="footer">
         Installer powered by <a href="https://esphome.github.io/esp-web-tools/">ESP Web Tools</a>.
     </div>
-    <script>
-      document.querySelectorAll('input[name="type"]').forEach(radio =>
-        radio.addEventListener("change", () => {
-          const button = document.querySelector('esp-web-install-button');
-          <!-- button.manifest = `/manifest_${radio.value}.json`; -->
-          button.manifest = '/manifest_secplus_gdo.json';
-          button.classList.remove('invisible');
-        }
-      ));
-    </script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const defaultRadio = document.querySelector('input[name="type"]:checked');
+    if (defaultRadio) {
+      const button = document.querySelector('esp-web-install-button');
+      button.manifest = `./manifest_${defaultRadio.value}.json`;
+      button.classList.remove('invisible');
+    }
+
+    // Then attach the *change* event as well
+    document.querySelectorAll('input[name="type"]').forEach(radio =>
+      radio.addEventListener("change", () => {
+        const button = document.querySelector('esp-web-install-button');
+        button.manifest = `./manifest_${radio.value}.json`;
+        button.classList.remove('invisible');
+      })
+    );
+  });
+</script>
   </body>
 </html>
