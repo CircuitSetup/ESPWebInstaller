@@ -48,8 +48,8 @@ jobs:
 
       - name: Move firmware files
         run: |
-          cp .esphome/build/**/*.bin firmware/ || true
-          cp .esphome/build/**/*.elf firmware/ || true
+          find .esphome/build -type f -name "*.bin" -exec cp {} firmware/ \;
+          find .esphome/build -type f -name "*.elf" -exec cp {} firmware/ \;
 
       - name: Upload Firmware (as Artifacts)
         uses: actions/upload-artifact@v4
