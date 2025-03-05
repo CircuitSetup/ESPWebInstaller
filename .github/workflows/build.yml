@@ -15,7 +15,7 @@ permissions:
 jobs:
   build-firmware:
     runs-on: ubuntu-latest
-    name: Build
+    name: build
     strategy:
       matrix:
         files:
