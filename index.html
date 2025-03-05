@@ -75,21 +75,39 @@
         }
       }
     </style>
-    <script type="module" src="https://unpkg.com/esp-web-tools@10.0.1/dist/web/install-button.js?module"></script>
+    <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
   </head>
   <body>
     <div class="content">
       <h1>CircuitSetup ESPHome Installer</h1>
+      <p>Select your product:</p>
+      <ul class="radios">
+        <li>
+          <label><input type="radio" name="type" value="6_chan_energy_meter" /> 6 Channel Energy Meter</label>
+        </li>
+        <li>
+          <label><input type="radio" name="type" value="6_chan_energy_meter_ethernet" /> 6 Channel Energy Meter Ethernet</label>
+        </li>
+        <li>
+          <label><input type="radio" name="type" value="secplus_gdo" /> Security+ Garage Door Opener</label>
+        </li>
+      </ul>
 
-      <esp-web-install-button manifest="https://circuitsetup.github.io/ESPWebInstaller/manifest_secplus_gdo.json">
-        <button slot="activate">Connect</button>
-        <span slot="unsupported">Ah snap, your browser doesn't work!</span>
-        <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
-      </esp-web-install-button>
+      <p class="button-row" align="center">
+        <esp-web-install-button class="invisible"></esp-web-install-button>
+      </p>
       
       <div class="footer">
         Installer powered by <a href="https://esphome.github.io/esp-web-tools/">ESP Web Tools</a>.
-    </div>
-
+      </div>
+      <script>
+      document.querySelectorAll('input[name="type"]').forEach(radio =>
+        radio.addEventListener("change", () => {
+          const button = document.querySelector('esp-web-install-button');
+          button.manifest = `./manifest_${radio.value}.json`;
+          button.classList.remove('invisible');
+        }
+      ));
+    </script>
   </body>
 </html>
