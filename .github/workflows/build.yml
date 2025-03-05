@@ -52,7 +52,7 @@ jobs:
           cp .esphome/build/**/*.elf firmware/ || true
 
       - name: Upload Firmware (as Artifacts)
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: "${{ matrix.files }}-firmware"
           path: firmware/
