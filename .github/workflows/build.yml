@@ -66,13 +66,7 @@ jobs:
 
       - name: Debug - List firmware folder
         run: ls -R firmware || echo "firmware folder empty"
-          
-      - name: Check out repo
-        uses: actions/checkout@v3
-        with:
-          persist-credentials: true     # keep token for subsequent git push
-          token: ${{ secrets.GITHUB_TOKEN }}
-
+        
       - name: Commit firmware to repo
         if: always()
         run: |
@@ -81,3 +75,9 @@ jobs:
           git add firmware
           git commit -m "Add compiled firmware for all devices" || echo "No changes to commit."
           git push
+          
+      - name: Check out repo
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: true     # keep token for subsequent git push
+          token: ${{ secrets.GITHUB_TOKEN }}
