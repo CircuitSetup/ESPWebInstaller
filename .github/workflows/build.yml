@@ -25,7 +25,7 @@ jobs:
 
       - name: Download ESPHome Config Files
         run: |
-          curl -L -o circuitsetup-gdo-default.yaml https://raw.githubusercontent.com/CircuitSetup/circuitsetup-esphome/main/circuitsetup-gdo-default.yaml
+          curl -L -o circuitsetup-gdo-default.yaml https://raw.githubusercontent.com/CircuitSetup/circuitsetup-esphome/master/circuitsetup-gdo-default.yaml
           curl -L -o 6chan_energy_meter_main_board.yaml https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/master/Software/ESPHome/6chan_energy_meter_main_board.yaml
           curl -L -o 6chan_energy_meter_main_ethernet.yaml https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/master/Software/ESPHome/6chan_energy_meter_main_ethernet.yaml
 
