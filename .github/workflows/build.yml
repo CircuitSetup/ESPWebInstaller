@@ -8,6 +8,9 @@ on:
     branches:
       - main
   workflow_dispatch:  # Allows manual runs
+
+permissions:
+  contents: write
   
 jobs:
   build-firmware:
@@ -62,6 +65,12 @@ jobs:
         with:
           name: "${{ matrix.files }}-firmware"
           path: firmware/
+          
+      - name: Check out repo
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: true     # keep token for subsequent git push
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Commit firmware to repo
         if: always()
