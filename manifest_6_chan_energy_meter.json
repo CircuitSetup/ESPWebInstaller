@@ -8,7 +8,7 @@
     {
       "chipFamily": "ESP32",
       "parts": [
-        { "path": "firmware/circuitsetup-gdo-default-v1.bin", "offset": 0 },
+        { "path": "circuitsetup-gdo-default-v1.bin", "offset": 0 },
       ]
     }
   ]
