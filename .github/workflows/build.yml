@@ -38,7 +38,12 @@ jobs:
         run: | 
           pip3 install wheel
           pip3 install esphome
-          echo "esphome_version=$(esphome version) >> $GITHUB_OUTPUT"
+
+      - name: Get ESPHome version
+        id: esphome_version
+        run: |
+          version=$(esphome version | grep 'Version:' | sed 's/Version: //')
+          echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Compile ESPHome
         run: esphome compile "${{ matrix.files }}"
@@ -46,13 +51,23 @@ jobs:
       - name: Create a firmware directory
         run: mkdir -p firmware
 
-      - name: Move firmware files
+      - name: Move the single combined file
         run: |
-          find .esphome/build -type f -name "*.bin" -exec cp {} firmware/ \;
-          find .esphome/build -type f -name "*.elf" -exec cp {} firmware/ \;
+          device_name=$(basename "${{ matrix.configs }}" .yaml)
+          find .esphome/build -type f -name "firmware.factory.bin" -exec \
+            mv {} "firmware/${device_name}-${{ steps.esphome_version.outputs.version }}.bin" \;
 
       - name: Upload Firmware (as Artifacts)
         uses: actions/upload-artifact@v4
         with:
           name: "${{ matrix.files }}-firmware"
           path: firmware/
+
+      - name: Commit firmware to repo
+        if: always()
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions@github.com"
+          git add firmware
+          git commit -m "Add compiled firmware for all devices"
+          git push
