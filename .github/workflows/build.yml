@@ -1,0 +1,58 @@
+name: Build ESPHome Firmware
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:  # Allows manual runs
+  
+jobs:
+  build-firmware:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        files:
+          - "circuitsetup-gdo-default.yaml"
+          - "6chan_energy_meter_main_board.yaml"
+          - "6chan_energy_meter_main_ethernet.yaml"
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Download ESPHome Config Files
+        run: |
+          curl -L -o circuitsetup-gdo-default.yaml https://raw.githubusercontent.com/CircuitSetup/circuitsetup-esphome/main/circuitsetup-gdo-default.yaml
+          curl -L -o 6chan_energy_meter_main_board.yaml https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/master/Software/ESPHome/6chan_energy_meter_main_board.yaml
+          curl -L -o 6chan_energy_meter_main_ethernet.yaml https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/master/Software/ESPHome/6chan_energy_meter_main_ethernet.yaml
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install ESPHome
+        run: | 
+          pip3 install wheel
+          pip3 install esphome
+          echo "esphome_version=$(esphome version) >> $GITHUB_OUTPUT"
+
+      - name: Compile ESPHome
+        run: esphome compile "${{ matrix.files }}"
+
+      - name: Create a firmware directory
+        run: mkdir -p firmware
+
+      - name: Move firmware files
+        run: |
+          cp .esphome/build/**/*.bin firmware/ || true
+          cp .esphome/build/**/*.elf firmware/ || true
+
+      - name: Upload Firmware (as Artifacts)
+        uses: actions/upload-artifact@v3
+        with:
+          name: "${{ matrix.files }}-firmware"
+          path: firmware/
