@@ -60,6 +60,15 @@ jobs:
           find .esphome/build -type f -name "firmware.factory.bin" -exec \
             mv {} "firmware/${device_name}-${{ steps.esphome_version.outputs.version }}.bin" \;
 
+      - name: Debug - List firmware folder
+        run: ls -R firmware || echo "firmware folder empty"
+
+      - name: If firmware is empty, add .gitkeep
+        run: |
+          if [ -z "$(ls -A firmware)" ]; then
+            touch firmware/.gitkeep
+          fi
+
       - name: Upload Firmware (as Artifacts)
         uses: actions/upload-artifact@v4
         with:
@@ -78,5 +87,5 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "github-actions@github.com"
           git add firmware
-          git commit -m "Add compiled firmware for all devices"
+          git commit -m "Add compiled firmware for all devices" || echo "No changes to commit."
           git push
