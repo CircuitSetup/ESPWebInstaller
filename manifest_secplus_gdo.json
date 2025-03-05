@@ -8,7 +8,7 @@
     {
       "chipFamily": "ESP32-S3",
       "parts": [
-        { "path": "https://circuitsetup.github.io/ESPWebInstaller/circuitsetup-gdo-default-v1.bin", "offset": 0 },
+        { "path": "https://circuitsetup.github.io/ESPWebInstaller/circuitsetup-gdo-default-v1.bin", "offset": 0 }
       ]
     }
   ]
