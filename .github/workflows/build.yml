@@ -56,7 +56,7 @@ jobs:
 
       - name: Move the single combined file
         run: |
-          device_name=$(basename "${{ matrix.configs }}" .yaml)
+          device_name=$(basename "${{ matrix.files }}" .yaml)
           find .esphome/build -type f -name "firmware.factory.bin" -exec \
             mv {} "firmware/${device_name}-${{ steps.esphome_version.outputs.version }}.bin" \;
 
