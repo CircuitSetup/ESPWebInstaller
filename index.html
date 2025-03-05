@@ -81,13 +81,12 @@
     <div class="content">
       <h1>CircuitSetup ESPHome Installer</h1>
 
-      <ul class="radios">
-        <li>
-          <label><esp-web-install-button manifest="https://circuitsetup.github.io/ESPWebInstaller/manifest_secplus_gdo.json"></esp-web-install-button></label>
-        </li>
-      </ul>
-
-
+      <esp-web-install-button manifest="https://circuitsetup.github.io/ESPWebInstaller/manifest_secplus_gdo.json">
+        <button slot="activate">Connect</button>
+        <span slot="unsupported">Ah snap, your browser doesn't work!</span>
+        <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
+      </esp-web-install-button>
+      
       <div class="footer">
         Installer powered by <a href="https://esphome.github.io/esp-web-tools/">ESP Web Tools</a>.
     </div>
