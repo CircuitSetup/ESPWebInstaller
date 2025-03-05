@@ -15,6 +15,7 @@ permissions:
 jobs:
   build-firmware:
     runs-on: ubuntu-latest
+    name: Build
     strategy:
       matrix:
         files:
@@ -51,6 +52,9 @@ jobs:
       - name: Compile ESPHome
         run: esphome compile "${{ matrix.files }}"
 
+      - name: Debug - Show build folder
+        run: ls -R .esphome/build
+
       - name: Create a firmware directory
         run: mkdir -p firmware
 
@@ -62,18 +66,6 @@ jobs:
 
       - name: Debug - List firmware folder
         run: ls -R firmware || echo "firmware folder empty"
-
-      - name: If firmware is empty, add .gitkeep
-        run: |
-          if [ -z "$(ls -A firmware)" ]; then
-            touch firmware/.gitkeep
-          fi
-
-      - name: Upload Firmware (as Artifacts)
-        uses: actions/upload-artifact@v4
-        with:
-          name: "${{ matrix.files }}-firmware"
-          path: firmware/
           
       - name: Check out repo
         uses: actions/checkout@v3
