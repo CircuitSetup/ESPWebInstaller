@@ -74,7 +74,7 @@ jobs:
           git config --global user.email "github-actions@github.com"
           git add firmware
           git commit -m "Add compiled firmware for all devices" || echo "No changes to commit."
-          git push
+          git push --force origin HEAD:main
           
       - name: Check out repo
         uses: actions/checkout@v3
