@@ -74,7 +74,7 @@ jobs:
           MANIFEST_NAME: CircuitSetup Security+ Garage Door Opener
           MANIFEST_FNAME: manifest_secplus_gdo.json
           MANIFEST_VERSION: "${{ steps.esphome_version.outputs.version }}"          
-          ESP32_S3_IMAGE_URI: https://circuitsetup.github.io/ESPWebInstaller/${{ steps.firmware.outputs.filename }}
+          ESP32_S3_IMAGE_URI: https://circuitsetup.github.io/ESPWebInstaller/firmware${{ steps.firmware.outputs.filename }}
 
       - name: Build Manifest for 6 Channel Meter
         if: ${{ endsWith(matrix.files, '6chan_energy_meter_main_board.yaml') }}
@@ -84,7 +84,7 @@ jobs:
           MANIFEST_NAME: CircuitSetup 6 Channel Energy Meter Main
           MANIFEST_FNAME: manifest_6_channel_meter.json
           MANIFEST_VERSION: "${{ steps.esphome_version.outputs.version }}"          
-          ESP32_IMAGE_URI: https://circuitsetup.github.io/ESPWebInstaller/${{ steps.firmware.outputs.filename }}
+          ESP32_IMAGE_URI: https://circuitsetup.github.io/ESPWebInstaller/firmware${{ steps.firmware.outputs.filename }}
 
       - name: Build Manifest for 6 Channel Meter Ethernet
         if: ${{ endsWith(matrix.files, '6chan_energy_meter_main_ethernet.yaml') }}
@@ -94,7 +94,7 @@ jobs:
           MANIFEST_NAME: CircuitSetup 6 Channel Energy Meter Ethernet
           MANIFEST_FNAME: manifest_6_channel_meter_ethernet.json
           MANIFEST_VERSION: "${{ steps.esphome_version.outputs.version }}"          
-          ESP32_S3_IMAGE_URI: https://circuitsetup.github.io/ESPWebInstaller/${{ steps.firmware.outputs.filename }}
+          ESP32_S3_IMAGE_URI: https://circuitsetup.github.io/ESPWebInstaller/firmware${{ steps.firmware.outputs.filename }}
         
       - name: Commit firmware to repo
         if: always()
