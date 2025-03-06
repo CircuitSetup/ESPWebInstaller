@@ -12,11 +12,21 @@ jobs:
     strategy:
       matrix:
         include:
-          - { name: "Time Circuits Display", path: "CircuitSetup/Time-Circuits-Display", folder: "Software/src" }
-          - { name: "Flux Capacitor", path: "CircuitSetup/Flux-Capacitor", folder: "src" }
-          - { name: "SID", path: "CircuitSetup/SID", folder: "src" }
-          - { name: "Dash-Gauges", path: "CircuitSetup/Dash-Gauges", folder: "src" }
-          - { name: "Remote", path: "CircuitSetup/Remote", folder: "src" }
+          - name: "Time Circuits Display"
+            path: "CircuitSetup/Time-Circuits-Display"
+            folder: "Software/src"
+          - name: "Flux Capacitor"
+            path: "CircuitSetup/Flux-Capacitor"
+            folder: "src"
+          - name: "SID"
+            path: "CircuitSetup/SID"
+            folder: "src"
+          - name: "Dash-Gauges"
+            path: "CircuitSetup/Dash-Gauges"
+            folder: "src"
+          - name: "Remote"
+            path: "CircuitSetup/Remote"
+            folder: "src"
 
     steps:
       - name: Checkout Builder Repo
