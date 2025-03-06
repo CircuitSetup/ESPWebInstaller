@@ -44,11 +44,11 @@ jobs:
 
       - name: Clone Target Repo
         run: |
-          git clone https://github.com/${{ matrix.repo.path }} target_repo
+          git clone https://github.com/${{ matrix.path }} target_repo
 
       - name: Build Firmware with PlatformIO
         run: |
-          cd target_repo/${{ matrix.repo.folder }}
+          cd target_repo/${{ matrix.folder }}
           pio run
 
       - name: Extract and Normalize Firmware Version
@@ -60,11 +60,13 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Rename Firmware Binary
+        id: rename
         run: |
           BIN_PATH=$(find target_repo/${{ matrix.folder }}/.pio/build -name firmware.bin)
           NEW_NAME="${{ matrix.name }}_${{ steps.get_version.outputs.version }}.bin"
           mv "$BIN_PATH" "$NEW_NAME"
           echo "Renamed firmware binary to $NEW_NAME"
+          echo "new_name=$NEW_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Create Release on Target Repo
         id: create_release
@@ -72,13 +74,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          repository: ${{ matrix.repo.path }}
+          repository: ${{ matrix.path }}
           tag_name: "${{ steps.get_version.outputs.version }}"
           name: "${{ matrix.name }} Firmware ${{ steps.get_version.outputs.version }}"
           draft: false
           prerelease: false
           generate_release_notes: true
           files: |
-            target_repo/${{ matrix.repo.folder }}/.pio/build/release/firmware.bin
+            target_repo/${{ steps.rename.outputs.new_name }}
 
 
