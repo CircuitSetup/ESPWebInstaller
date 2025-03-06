@@ -104,7 +104,8 @@ jobs:
           git add firmware
           git add manifests
           git commit -m "Add compiled firmware for all devices" || echo "No changes to commit."
-          git push --force origin HEAD:main
+          git pull --rebase origin main
+          git push origin HEAD:main
           
       - name: Check out repo
         uses: actions/checkout@v3
