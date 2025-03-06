@@ -1,0 +1,74 @@
+name: Build and Deploy Props Firmware
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { name: "Time Circuits Display", path: "CircuitSetup/Time-Circuits-Display", folder: "Software/src" }
+          - { name: "Flux Capacitor", path: "CircuitSetup/Flux-Capacitor", folder: "src" }
+          - { name: "SID", path: "CircuitSetup/SID", folder: "src" }
+          - { name: "Dash-Gauges", path: "CircuitSetup/Dash-Gauges", folder: "src" }
+          - { name: "Remote", path: "CircuitSetup/Remote", folder: "src" }
+
+    steps:
+      - name: Checkout Builder Repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install PlatformIO
+        run: |
+          pip install platformio
+          pip install esptool
+
+      - name: Clone Target Repo
+        run: |
+          git clone https://github.com/${{ matrix.repo.path }} target_repo
+
+      - name: Build Firmware with PlatformIO
+        run: |
+          cd target_repo/${{ matrix.repo.folder }}
+          pio run
+
+      - name: Extract and Normalize Firmware Version
+        id: get_version
+        run: |
+          RAW_VERSION=$(grep -hE '#define\s+[A-Z_]*VERSION\s+"[Vv][0-9.]+"' target_repo/${{ matrix.folder }}/??_globals.h | head -n 1 | sed -E 's/.*VERSION\s+"[Vv]([0-9.]+)".*/\1/')
+          VERSION="v$RAW_VERSION"
+          echo "Extracted normalized version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Rename Firmware Binary
+        run: |
+          BIN_PATH=$(find target_repo/${{ matrix.folder }}/.pio/build -name firmware.bin)
+          NEW_NAME="${{ matrix.name }}_${{ steps.get_version.outputs.version }}.bin"
+          mv "$BIN_PATH" "$NEW_NAME"
+          echo "Renamed firmware binary to $NEW_NAME"
+
+      - name: Create Release on Target Repo
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          repository: ${{ matrix.repo.path }}
+          tag_name: "${{ steps.get_version.outputs.version }}"
+          name: "${{ matrix.name }} Firmware ${{ steps.get_version.outputs.version }}"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            target_repo/${{ matrix.repo.folder }}/.pio/build/release/firmware.bin
+
+
