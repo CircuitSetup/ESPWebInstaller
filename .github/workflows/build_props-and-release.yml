@@ -14,19 +14,19 @@ jobs:
         include:
           - name: "Time Circuits Display"
             path: "CircuitSetup/Time-Circuits-Display"
-            folder: "Software/src"
+            folder: "Software"
           - name: "Flux Capacitor"
             path: "CircuitSetup/Flux-Capacitor"
-            folder: "src"
+            folder: ""
           - name: "SID"
             path: "CircuitSetup/SID"
-            folder: "src"
+            folder: ""
           - name: "Dash-Gauges"
             path: "CircuitSetup/Dash-Gauges"
-            folder: "src"
+            folder: ""
           - name: "Remote"
             path: "CircuitSetup/Remote"
-            folder: "src"
+            folder: ""
 
     steps:
       - name: Checkout Builder Repo
