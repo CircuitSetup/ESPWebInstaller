@@ -48,8 +48,7 @@ jobs:
 
       - name: Build Firmware with PlatformIO
         run: |
-          cd target_repo/${{ matrix.folder }}
-          pio run
+          pio run -d target_repo/${{ matrix.folder }}
 
       - name: Extract and Normalize Firmware Version
         id: get_version
