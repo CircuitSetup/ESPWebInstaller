@@ -24,8 +24,11 @@ jobs:
           - "6chan_energy_meter_main_ethernet.yaml"
 
     steps:
-      - name: Check out code
+      - name: Checkout repo
         uses: actions/checkout@v3
+        with:
+          persist-credentials: true     # keep token for subsequent git push
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download ESPHome Config Files
         run: |
@@ -106,9 +109,3 @@ jobs:
           git commit -m "Add compiled firmware for all devices" || echo "No changes to commit."
           git pull --rebase origin main
           git push origin HEAD:main
-          
-      - name: Check out repo
-        uses: actions/checkout@v3
-        with:
-          persist-credentials: true     # keep token for subsequent git push
-          token: ${{ secrets.GITHUB_TOKEN }}
