@@ -52,20 +52,26 @@ jobs:
       - name: Compile ESPHome
         run: esphome compile "${{ matrix.files }}"
 
-      - name: Debug - Show build folder
-        run: ls -R .esphome/build
-
       - name: Create a firmware directory
         run: mkdir -p firmware
 
       - name: Move the single combined file
+        id: firmware
         run: |
-          device_name=$(basename "${{ matrix.files }}" .yaml)
+          filename=$(basename "${{ matrix.files }}" .yaml)-${{ steps.esphome_version.outputs.version }}.bin
           find .esphome/build -type f -name "firmware*.bin" -exec \
-            mv {} "firmware/${device_name}-${{ steps.esphome_version.outputs.version }}.bin" \;
+            mv {} "firmware/${filename}" \;
+          echo "filename=$filename" >> $GITHUB_OUTPUT
 
-      - name: Debug - List firmware folder
-        run: ls -R firmware || echo "firmware folder empty"
+      - name: Build Manifest for secplus GDO
+        if: github.event.release  
+        run: |
+          ruby ./scripts/update-espwebtools-manifests.rb
+        env:
+          MANIFEST_NAME: CircuitSetup Security+ Garage Door Opener
+          MANIFEST_FNAME: manifest_secplus_gdo.json
+          MANIFEST_VERSION: ""          
+          ESP32_S3_IMAGE_URI: https://circuitsetup.github.io/ESPWebInstaller/${{ steps.firmware.outputs.filename }}
         
       - name: Commit firmware to repo
         if: always()
@@ -73,6 +79,7 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "github-actions@github.com"
           git add firmware
+          git add manifests
           git commit -m "Add compiled firmware for all devices" || echo "No changes to commit."
           git push --force origin HEAD:main
           
