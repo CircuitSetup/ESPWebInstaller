@@ -62,7 +62,7 @@ jobs:
         id: firmware
         run: |
           filename=$(basename "${{ matrix.files }}" .yaml)-${{ steps.esphome_version.outputs.version }}.bin
-          find .esphome/build -type f -name "firmware*.bin" -exec \
+          find .esphome/build -type f -name "firmware.factory.bin" -exec \
             mv {} "firmware/${filename}" \;
           echo "filename=$filename" >> $GITHUB_OUTPUT
 
