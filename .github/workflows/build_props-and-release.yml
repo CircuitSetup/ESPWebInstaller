@@ -71,7 +71,7 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         with:
           repository: ${{ matrix.path }}
           tag_name: "${{ steps.get_version.outputs.version }}"
