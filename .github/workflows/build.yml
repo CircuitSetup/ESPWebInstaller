@@ -53,7 +53,7 @@ jobs:
           echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Compile ESPHome
-        run: esphome compile "${{ matrix.files }}"
+        run: esphome compile "${{ matrix.files }}" --verbose
 
       - name: Create a firmware directory
         run: mkdir -p firmware
