@@ -7,15 +7,6 @@ manifest = {
   builds: []
 }
 
-if ENV['ESP8266_IMAGE_URI']
-  manifest[:builds] << {
-    chipFamily: 'ESP8266',
-    parts: [
-      { path: ENV['ESP8266_IMAGE_URI'], offset: 0 }
-    ]
-  }
-end
-
 if ENV['ESP32_IMAGE_URI']
   manifest[:builds] << {
     chipFamily: 'ESP32',
@@ -35,4 +26,4 @@ if ENV['ESP32_S3_IMAGE_URI']
 end
 json = JSON.dump(manifest)
 puts json
-File.write("install-konnected/manifests/#{ENV['MANIFEST_FNAME']}", json)
+File.write("manifests/#{ENV['MANIFEST_FNAME']}", json)
