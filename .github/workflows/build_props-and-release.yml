@@ -106,6 +106,8 @@ jobs:
       - name: Build Firmware with PlatformIO
         if: steps.check_version.outputs.should_build == 'true'
         run: |
+          mkdir -p target_repo/firmware/${{ matrix.name }}
+          echo "⚙️ Building default firmware..."
           pio run -d target_repo/${{ matrix.folder }}
 
       - name: Rename Firmware Binary
@@ -120,9 +122,27 @@ jobs:
           # Replace spaces with underscores in matrix.name
           SAFE_NAME=$(echo "${{ matrix.name }}" | tr ' ' '_')
           NEW_NAME="${SAFE_NAME}_${{ steps.get_version.outputs.version }}.bin"
-          mv "$BIN_PATH" "target_repo/$NEW_NAME"
+          mv "$BIN_PATH" "target_repo/firmware/${{ matrix.name }}/$NEW_NAME"
           echo "✅ Renamed firmware binary to $NEW_NAME"
-          echo "new_name=$NEW_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Build Firmware with GTE_KEYPAD (Only for Time Circuits Display)
+        if: steps.check_version.outputs.should_build == 'true' && matrix.name == 'Time Circuits Display'
+        run: |
+          echo "⚙️ Building firmware with GTE_KEYPAD flag..."
+          pio run -d target_repo/${{ matrix.folder }} -e esp32dev --build-flags "-D GTE_KEYPAD"
+
+      - name: Rename GTE_KEYPAD Firmware (Only for Time Circuits Display)
+        if: steps.check_version.outputs.should_build == 'true' && matrix.name == 'Time Circuits Display'
+        run: |
+          BIN_PATH=$(find target_repo/${{ matrix.folder }}/.pio/build -name firmware.bin | head -n 1)
+          if [ -z "$BIN_PATH" ]; then
+            echo "❌ GTE_KEYPAD firmware binary not found!"
+            exit 1
+          fi
+          SAFE_NAME=$(echo "${{ matrix.name }}" | tr ' ' '_')
+          NEW_NAME="${SAFE_NAME}_GTE_KEYPAD_${{ steps.get_version.outputs.version }}.bin"
+          mv "$BIN_PATH" "target_repo/firmware/${{ matrix.name }}/$NEW_NAME"
+          echo "✅ Renamed GTE_KEYPAD firmware -> target_repo/firmware/${{ matrix.name }}/$NEW_NAME"
 
       - name: Create Release on Target Repo
         if: steps.check_version.outputs.should_build == 'true'
@@ -138,7 +158,7 @@ jobs:
           prerelease: false
           generate_release_notes: true
           files: |
-            target_repo/${{ steps.rename.outputs.new_name }}
+            target_repo/firmware/${{ matrix.name }}/*.bin
           fail_on_unmatched_files: true
 
 
