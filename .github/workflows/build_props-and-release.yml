@@ -32,14 +32,24 @@ jobs:
       - name: Checkout Builder Repo
         uses: actions/checkout@v4
 
+      - name: Get Latest Commit from Target Repo
+        id: latest_commit
+        run: |
+          LATEST_COMMIT=$(curl -s "https://api.github.com/repos/${{ matrix.path }}/commits/main" | jq -r .sha)
+          if [ "$LATEST_COMMIT" == "null" ]; then
+            LATEST_COMMIT="no-cache"
+          fi
+          echo "Using commit hash: $LATEST_COMMIT"
+          echo "latest_commit=$LATEST_COMMIT" >> "$GITHUB_OUTPUT"
+
       - name: Cache target_repo Directory
         id: cache-target-repo
         uses: actions/cache@v4
         with:
           path: target_repo
-          key: ${{ runner.os }}-${{ matrix.path }}-${{ github.sha }}
+          key: ${{ runner.os }}-target-repo-${{ matrix.path }}-${{ steps.latest_commit.outputs.latest_commit }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.path }}-
+            ${{ runner.os }}-target-repo-${{ matrix.path }}-
 
       - name: Clone Target Repo (if cache is empty)
         if: steps.cache-target-repo.outputs.cache-hit != 'true'
