@@ -53,7 +53,7 @@ jobs:
       - name: Extract and Normalize Firmware Version
         id: get_version
         run: |
-          RAW_VERSION=$(grep -hE '#define\s+[A-Z_]*VERSION\s+"[Vv][0-9.]+"' target_repo/${{ matrix.folder }}src/??_globals.h | head -n 1 | sed -E 's/.*VERSION\s+"[Vv]([0-9.]+)".*/\1/')
+          RAW_VERSION=$(grep -hE '#define\s+[A-Z_]*VERSION\s+"[Vv][0-9.]+"' target_repo/${{ matrix.folder }}src/*_globals.h | head -n 1 | sed -E 's/.*VERSION\s+"[Vv]([0-9.]+)".*/\1/')
           VERSION="v$RAW_VERSION"
           echo "Extracted normalized version: $VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -61,10 +61,16 @@ jobs:
       - name: Rename Firmware Binary
         id: rename
         run: |
-          BIN_PATH=$(find target_repo/${{ matrix.folder }}.pio/build -name firmware.bin)
-          NEW_NAME="${{ matrix.name }}_${{ steps.get_version.outputs.version }}.bin"
+          BIN_PATH=$(find target_repo/${{ matrix.folder }}.pio/build -name firmware.bin | head -n 1)
+          if [ -z "$BIN_PATH" ]; then
+            echo "❌ Firmware binary not found!"
+            exit 1
+          fi
+          # Replace spaces with underscores in matrix.name
+          SAFE_NAME=$(echo "${{ matrix.name }}" | tr ' ' '_')
+          NEW_NAME="${SAFE_NAME}_${{ steps.get_version.outputs.version }}.bin"
           mv "$BIN_PATH" "$NEW_NAME"
-          echo "Renamed firmware binary to $NEW_NAME"
+          echo "✅ Renamed firmware binary to $NEW_NAME"
           echo "new_name=$NEW_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Create Release on Target Repo
