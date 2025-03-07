@@ -32,6 +32,55 @@ jobs:
       - name: Checkout Builder Repo
         uses: actions/checkout@v4
 
+      - name: Cache target_repo Directory
+        id: cache-target-repo
+        uses: actions/cache@v4
+        with:
+          path: target_repo
+          key: ${{ runner.os }}-${{ matrix.path }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.path }}-
+
+      - name: Clone Target Repo (if cache is empty)
+        if: steps.cache-target-repo.outputs.cache-hit != 'true'
+        run: git clone https://github.com/${{ matrix.path }} target_repo
+
+      - name: Get Latest Release Tag
+        id: latest_release
+        run: |
+          LATEST_TAG=$(curl -s "https://api.github.com/repos/${{ matrix.path }}/releases/latest" | jq -r .tag_name)
+          if [ "$LATEST_TAG" == "null" ]; then
+            LATEST_TAG=""
+          fi
+          echo "Latest release tag: $LATEST_TAG"
+          echo "latest_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Extract and Normalize Firmware Version
+        id: get_version
+        run: |
+          RAW_VERSION=$(grep -hE '#define\s+[A-Z_]*VERSION\s+"[Vv][0-9.]+"' target_repo/${{ matrix.folder }}src/*_global.h | head -n 1 | sed -E 's/.*VERSION\s+"[Vv]([0-9.]+)".*/\1/')
+          if [ -z "$RAW_VERSION" ]; then
+            echo "❌ Version number not found!"
+            exit 1
+          fi
+          VERSION="v$RAW_VERSION"
+          echo "Extracted normalized version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Compare Version Numbers
+        id: check_version
+        run: |
+          CURRENT_VERSION="${{ steps.get_version.outputs.version }}"
+          LAST_VERSION="${{ steps.latest_release.outputs.latest_tag }}"
+
+          if [ "$CURRENT_VERSION" == "$LAST_VERSION" ]; then
+            echo "⚠️ Firmware version has not changed ($CURRENT_VERSION). Stopping job."
+            exit 0  # Stop the job immediately
+          else
+            echo "✅ New firmware version detected: $CURRENT_VERSION"
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          fi
+          
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -42,21 +91,9 @@ jobs:
           pip install platformio
           pip install esptool
 
-      - name: Clone Target Repo
-        run: |
-          git clone https://github.com/${{ matrix.path }} target_repo
-
       - name: Build Firmware with PlatformIO
         run: |
           pio run -d target_repo/${{ matrix.folder }}
-
-      - name: Extract and Normalize Firmware Version
-        id: get_version
-        run: |
-          RAW_VERSION=$(grep -hE '#define\s+[A-Z_]*VERSION\s+"[Vv][0-9.]+"' target_repo/${{ matrix.folder }}src/*_global.h | head -n 1 | sed -E 's/.*VERSION\s+"[Vv]([0-9.]+)".*/\1/')
-          VERSION="v$RAW_VERSION"
-          echo "Extracted normalized version: $VERSION"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Rename Firmware Binary
         id: rename
