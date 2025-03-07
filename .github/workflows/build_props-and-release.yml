@@ -85,27 +85,31 @@ jobs:
 
           if [ "$CURRENT_VERSION" == "$LAST_VERSION" ]; then
             echo "⚠️ Firmware version has not changed ($CURRENT_VERSION). Stopping job."
-            exit 0  # Stop the job immediately
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
           else
             echo "✅ New firmware version detected: $CURRENT_VERSION"
             echo "should_build=true" >> "$GITHUB_OUTPUT"
           fi
           
       - name: Set up Python
+        if: steps.check_version.outputs.should_build == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
       - name: Install PlatformIO
+        if: steps.check_version.outputs.should_build == 'true'
         run: |
           pip install platformio
           pip install esptool
 
       - name: Build Firmware with PlatformIO
+        if: steps.check_version.outputs.should_build == 'true'
         run: |
           pio run -d target_repo/${{ matrix.folder }}
 
       - name: Rename Firmware Binary
+        if: steps.check_version.outputs.should_build == 'true'
         id: rename
         run: |
           BIN_PATH=$(find target_repo/${{ matrix.folder }}.pio/build/esp32dev -name firmware.bin | head -n 1)
@@ -121,6 +125,7 @@ jobs:
           echo "new_name=$NEW_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Create Release on Target Repo
+        if: steps.check_version.outputs.should_build == 'true'
         id: create_release
         uses: softprops/action-gh-release@v2
         env:
