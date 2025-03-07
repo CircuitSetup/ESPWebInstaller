@@ -87,5 +87,6 @@ jobs:
           generate_release_notes: true
           files: |
             target_repo/${{ steps.rename.outputs.new_name }}
+          fail_on_unmatched_files: true
 
 
