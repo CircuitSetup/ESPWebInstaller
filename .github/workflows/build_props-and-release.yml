@@ -130,7 +130,7 @@ jobs:
         if: steps.check_version.outputs.should_build == 'true' && matrix.name == 'Time Circuits Display'
         run: |
           echo "⚙️ Building firmware with GTE_KEYPAD flag..."
-          pio run -d target_repo/${{ matrix.folder }} -e esp32dev "-D GTE_KEYPAD"
+          pio run -d target_repo/${{ matrix.folder }} -e GTE
 
       - name: Rename GTE_KEYPAD Firmware (Only for Time Circuits Display)
         if: steps.check_version.outputs.should_build == 'true' && matrix.name == 'Time Circuits Display'
