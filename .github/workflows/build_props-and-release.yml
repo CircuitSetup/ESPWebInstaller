@@ -122,6 +122,7 @@ jobs:
           # Replace spaces with underscores in matrix.name
           SAFE_NAME=$(echo "${{ matrix.name }}" | tr ' ' '_')
           NEW_NAME="${SAFE_NAME}_${{ steps.get_version.outputs.version }}.bin"
+          mkdir -p target_repo/firmware/"${{ matrix.name }}"
           mv "$BIN_PATH" "target_repo/firmware/${{ matrix.name }}/$NEW_NAME"
           echo "✅ Renamed firmware binary to $NEW_NAME"
 
