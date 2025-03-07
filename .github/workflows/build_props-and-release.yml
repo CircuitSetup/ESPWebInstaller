@@ -70,7 +70,7 @@ jobs:
           SAFE_NAME=$(echo "${{ matrix.name }}" | tr ' ' '_')
           NEW_NAME="${SAFE_NAME}_${{ steps.get_version.outputs.version }}.bin"
           mv "$BIN_PATH" "$NEW_NAME"
-          echo "✅ Renamed firmware binary to $NEW_NAME"
+          echo "✅ Renamed firmware binary to $NEW_NAME in $BIN_PATH"
           echo "new_name=$NEW_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Verify Binary Presence
