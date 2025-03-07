@@ -53,7 +53,7 @@ jobs:
       - name: Extract and Normalize Firmware Version
         id: get_version
         run: |
-          RAW_VERSION=$(grep -hE '#define\s+[A-Z_]*VERSION\s+"[Vv][0-9.]+"' target_repo/${{ matrix.folder }}src/*_globals.h | head -n 1 | sed -E 's/.*VERSION\s+"[Vv]([0-9.]+)".*/\1/')
+          RAW_VERSION=$(grep -hE '#define\s+[A-Z_]*VERSION\s+"[Vv][0-9.]+"' target_repo/${{ matrix.folder }}src/*_global.h | head -n 1 | sed -E 's/.*VERSION\s+"[Vv]([0-9.]+)".*/\1/')
           VERSION="v$RAW_VERSION"
           echo "Extracted normalized version: $VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
