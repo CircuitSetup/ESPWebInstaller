@@ -69,8 +69,8 @@ jobs:
           # Replace spaces with underscores in matrix.name
           SAFE_NAME=$(echo "${{ matrix.name }}" | tr ' ' '_')
           NEW_NAME="${SAFE_NAME}_${{ steps.get_version.outputs.version }}.bin"
-          mv "$BIN_PATH" "$NEW_NAME"
-          echo "✅ Renamed firmware binary to $NEW_NAME in $BIN_PATH"
+          mv "$BIN_PATH" "target_repo/$NEW_NAME"
+          echo "✅ Renamed firmware binary to $NEW_NAME"
           echo "new_name=$NEW_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Verify Binary Presence
@@ -89,7 +89,7 @@ jobs:
           prerelease: false
           generate_release_notes: true
           files: |
-            target_repo/.pio/build/esp32dev/${{ steps.rename.outputs.new_name }}
+            target_repo/${{ steps.rename.outputs.new_name }}
           fail_on_unmatched_files: true
 
 
