@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+    paths:
+      - '**'
+      - '!index.html'
+      - '!*.md'
+      - '!.github/workflows/*'
   pull_request:
     branches:
       - main
