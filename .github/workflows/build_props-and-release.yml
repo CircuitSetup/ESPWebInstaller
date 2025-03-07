@@ -73,6 +73,9 @@ jobs:
           echo "✅ Renamed firmware binary to $NEW_NAME"
           echo "new_name=$NEW_NAME" >> "$GITHUB_OUTPUT"
 
+      - name: Verify Binary Presence
+        run: ls -la target_repo/
+
       - name: Create Release on Target Repo
         id: create_release
         uses: softprops/action-gh-release@v2
