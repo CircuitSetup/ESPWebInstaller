@@ -114,7 +114,7 @@ jobs:
           ruby ./scripts/update-espwebtools-manifests.rb
         env:
           MANIFEST_NAME: CircuitSetup 6 Channel Energy Meter Main + 1 Add-on
-          MANIFEST_FNAME: manifest_6channel_energy_meter-1-add-on.json
+          MANIFEST_FNAME: manifest_6_channel_meter-1-add-on.json
           MANIFEST_VERSION: "${{ steps.esphome_version.outputs.version }}"          
           ESP32_IMAGE_URI: https://circuitsetup.github.io/ESPWebInstaller/firmware/${{ steps.firmware.outputs.filename }}
 
