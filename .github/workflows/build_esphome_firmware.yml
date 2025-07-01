@@ -172,5 +172,5 @@ jobs:
           git add firmware
           git add manifests
           git commit -m "Add compiled firmware for all devices" || echo "No changes to commit."
-          git pull --rebase origin main
+          git pull origin main --no-edit
           git push origin HEAD:main
