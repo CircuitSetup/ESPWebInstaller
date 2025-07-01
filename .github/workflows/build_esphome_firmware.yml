@@ -42,8 +42,11 @@ jobs:
           curl -L -o circuitsetup-gdo-default.yaml https://raw.githubusercontent.com/CircuitSetup/circuitsetup-esphome/master/circuitsetup-gdo-default.yaml
           curl -L -o circuitsetup-gdo-dry-contact.yaml https://raw.githubusercontent.com/CircuitSetup/circuitsetup-esphome/master/circuitsetup-gdo-dry-contact.yaml
           curl -L -o 6chan_energy_meter_main_board.yaml https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/master/Software/ESPHome/6chan_energy_meter_main_board.yaml
-          curl -L -o 6chan_energy_meter-1-add-on.yaml https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/master/Software/ESPHome/6chan_energy_meter-1-add-on.yaml
+          curl -L -o 6chan_energy_meter_1-addon.yaml https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/master/Software/ESPHome/6chan_energy_meter_1-addon.yaml
+          curl -L -o 6chan_energy_meter_2-addons.yaml https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/master/Software/ESPHome/6chan_energy_meter_2-addons.yaml
           curl -L -o 6chan_energy_meter_main_ethernet.yaml https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/master/Software/ESPHome/6chan_energy_meter_main_ethernet.yaml
+          curl -L -o 6chan_energy_meter_1-addon_ethernet.yaml https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/master/Software/ESPHome/6chan_energy_meter_1-addon_ethernet.yaml
+          curl -L -o 6chan_energy_meter_2-addons_ethernet.yaml https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/master/Software/ESPHome/6chan_energy_meter_2-addons_ethernet.yaml
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -109,12 +112,22 @@ jobs:
           ESP32_IMAGE_URI: https://circuitsetup.github.io/ESPWebInstaller/firmware/${{ steps.firmware.outputs.filename }}
 
       - name: Build Manifest for 6 Channel Meter + 1 Add-on
-        if: ${{ endsWith(matrix.files, '6chan_energy_meter-1-add-on.yaml') }}
+        if: ${{ endsWith(matrix.files, '6chan_energy_meter_1-addon.yaml') }}
         run: |
           ruby ./scripts/update-espwebtools-manifests.rb
         env:
           MANIFEST_NAME: CircuitSetup 6 Channel Energy Meter Main + 1 Add-on
-          MANIFEST_FNAME: manifest_6_channel_meter-1-add-on.json
+          MANIFEST_FNAME: manifest_6_channel_meter_1-addon.json
+          MANIFEST_VERSION: "${{ steps.esphome_version.outputs.version }}"          
+          ESP32_IMAGE_URI: https://circuitsetup.github.io/ESPWebInstaller/firmware/${{ steps.firmware.outputs.filename }}
+
+      - name: Build Manifest for 6 Channel Meter + 2 Add-ons
+        if: ${{ endsWith(matrix.files, '6chan_energy_meter_2-addons.yaml') }}
+        run: |
+          ruby ./scripts/update-espwebtools-manifests.rb
+        env:
+          MANIFEST_NAME: CircuitSetup 6 Channel Energy Meter Main + 2 Add-ons
+          MANIFEST_FNAME: manifest_6_channel_meter_2-addons.json
           MANIFEST_VERSION: "${{ steps.esphome_version.outputs.version }}"          
           ESP32_IMAGE_URI: https://circuitsetup.github.io/ESPWebInstaller/firmware/${{ steps.firmware.outputs.filename }}
 
@@ -125,6 +138,26 @@ jobs:
         env:
           MANIFEST_NAME: CircuitSetup 6 Channel Energy Meter Ethernet
           MANIFEST_FNAME: manifest_6_channel_meter_ethernet.json
+          MANIFEST_VERSION: "${{ steps.esphome_version.outputs.version }}"          
+          ESP32_S3_IMAGE_URI: https://circuitsetup.github.io/ESPWebInstaller/firmware/${{ steps.firmware.outputs.filename }}
+
+      - name: Build Manifest for 6 Channel Meter Ethernet + 1 Add-on
+        if: ${{ endsWith(matrix.files, '6chan_energy_meter_1-addon_ethernet.yaml') }}
+        run: |
+          ruby ./scripts/update-espwebtools-manifests.rb
+        env:
+          MANIFEST_NAME: CircuitSetup 6 Channel Energy Meter Ethernet + 1 Add-on
+          MANIFEST_FNAME: manifest_6_channel_meter_1-addon_ethernet.json
+          MANIFEST_VERSION: "${{ steps.esphome_version.outputs.version }}"          
+          ESP32_S3_IMAGE_URI: https://circuitsetup.github.io/ESPWebInstaller/firmware/${{ steps.firmware.outputs.filename }}
+
+      - name: Build Manifest for 6 Channel Meter Ethernet + 2 Add-ons
+        if: ${{ endsWith(matrix.files, '6chan_energy_meter_2-addons_ethernet.yaml') }}
+        run: |
+          ruby ./scripts/update-espwebtools-manifests.rb
+        env:
+          MANIFEST_NAME: CircuitSetup 6 Channel Energy Meter Ethernet + 2 Add-on
+          MANIFEST_FNAME: manifest_6_channel_meter_2-addons_ethernet.json
           MANIFEST_VERSION: "${{ steps.esphome_version.outputs.version }}"          
           ESP32_S3_IMAGE_URI: https://circuitsetup.github.io/ESPWebInstaller/firmware/${{ steps.firmware.outputs.filename }}
         
