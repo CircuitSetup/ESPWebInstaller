@@ -253,5 +253,16 @@ jobs:
           git add firmware
           git add manifests
           git commit -m "Add compiled firmware for all devices" || echo "No changes to commit."
-          git pull origin main --no-edit
-          git push origin HEAD:main
+          
+          attempts=0
+          max_attempts=5
+          
+          until git pull origin main --no-edit && git push origin HEAD:main; do
+            attempts=$((attempts+1))
+            if [ $attempts -ge $max_attempts ]; then
+              echo "Max push attempts reached, exiting with failure."
+              exit 1
+            fi
+            echo "Push failed due to remote changes, retrying in 10 seconds... (attempt $attempts of $max_attempts)"
+            sleep 10
+          done
