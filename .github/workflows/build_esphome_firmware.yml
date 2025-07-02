@@ -16,6 +16,10 @@ on:
 
 permissions:
   contents: write
+
+concurrency:
+  group: build_esphome_firmware
+  cancel-in-progress: true
   
 jobs:
   build-firmware:
