@@ -98,7 +98,8 @@ jobs:
             done
           fi
 
-          echo "files=$(printf '%s\n' "${needs_build[@]}" | jq -R . | jq -s .)" >> $GITHUB_OUTPUT
+          json=$(printf '%s\n' "${needs_build[@]}" | jq -R . | jq -cs .)
+          echo "files=$json" >> $GITHUB_OUTPUT
 
   build-firmware:
     needs: determine-build
