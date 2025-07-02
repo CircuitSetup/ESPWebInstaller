@@ -13,6 +13,13 @@ on:
     branches:
       - main
   workflow_dispatch:  # Allows manual runs
+    inputs:
+      force_build:
+        description: 'Force build even if firmware is up to date'
+        required: false
+        default: 'false'
+  schedule:
+    - cron: '0 6 * * 1,4'
 
 permissions:
   contents: write
@@ -20,29 +27,112 @@ permissions:
 concurrency:
   group: build_esphome_firmware
   cancel-in-progress: true
-  
+
 jobs:
-  build-firmware:
+  determine-build:
     runs-on: ubuntu-latest
-    name: build
+    outputs:
+      files: ${{ steps.set-files.outputs.files }}
+      version: ${{ steps.esphome_version.outputs.version }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install ESPHome
+        run: |
+          pip3 install wheel
+          pip3 install esphome
+
+      - name: Get ESPHome version
+        id: esphome_version
+        run: |
+          version=$(esphome version | grep 'Version:' | sed 's/Version: //')
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+      - name: Determine firmware needing build
+        id: set-files
+        run: |
+          version="${{ steps.esphome_version.outputs.version }}"
+          force_build="${{ github.event.inputs.force_build }}"
+          configs=(
+            "circuitsetup-gdo-default.yaml"
+            "circuitsetup-gdo-dry-contact.yaml"
+            "6chan_energy_meter_main_board.yaml"
+            "6chan_energy_meter_1-addon.yaml"
+            "6chan_energy_meter_2-addons.yaml"
+            "6chan_energy_meter_main_ethernet.yaml"
+            "6chan_energy_meter_1-addon_ethernet.yaml"
+            "6chan_energy_meter_2-addons_ethernet.yaml"
+          )
+          
+          needs_build=()
+          mkdir -p firmware
+      
+          if [[ "$force_build" == "true" ]]; then
+            echo "Force build enabled. Adding all configs."
+            needs_build=("${configs[@]}")
+          else
+            for config in "${configs[@]}"; do
+              base=$(basename "$config" .yaml)
+              expected="firmware/${base}-${version}.bin"
+              if [[ ! -f "$expected" ]]; then
+                echo "$expected does not exist, will build."
+                needs_build+=("$config")
+              else
+                echo "$expected exists. Skipping build."
+              fi
+            done
+          fi
+
+          echo "files=$(printf '%s\n' "${needs_build[@]}" | jq -R . | jq -s .)" >> $GITHUB_OUTPUT
+
+  build-firmware:
+    needs: determine-build
+    runs-on: ubuntu-latest
+    if: needs.determine-build.outputs.files != '[]'
+
     strategy:
       matrix:
-        files:
-          - "circuitsetup-gdo-default.yaml"
-          - "circuitsetup-gdo-dry-contact.yaml"
-          - "6chan_energy_meter_main_board.yaml"
-          - "6chan_energy_meter_1-addon.yaml"
-          - "6chan_energy_meter_2-addons.yaml"
-          - "6chan_energy_meter_main_ethernet.yaml"
-          - "6chan_energy_meter_1-addon_ethernet.yaml"
-          - "6chan_energy_meter_2-addons_ethernet.yaml"
+        files: ${{ fromJson(needs.determine-build.outputs.files) }}
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
         with:
-          persist-credentials: true     # keep token for subsequent git push
+          persist-credentials: true
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install ESPHome
+        run: |
+          pip3 install wheel
+          pip3 install esphome
 
       - name: Download ESPHome Config Files
         run: |
@@ -55,32 +145,17 @@ jobs:
           curl -L -o 6chan_energy_meter_1-addon_ethernet.yaml https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/master/Software/ESPHome/6chan_energy_meter_1-addon_ethernet.yaml
           curl -L -o 6chan_energy_meter_2-addons_ethernet.yaml https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/master/Software/ESPHome/6chan_energy_meter_2-addons_ethernet.yaml
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
-
-      - name: Install ESPHome
-        run: | 
-          pip3 install wheel
-          pip3 install esphome
-
-      - name: Get ESPHome version
-        id: esphome_version
-        run: |
-          version=$(esphome version | grep 'Version:' | sed 's/Version: //')
-          echo "version=$version" >> $GITHUB_OUTPUT
-
       - name: Compile ESPHome
         run: esphome -v compile "${{ matrix.files }}"
 
-      - name: Create a firmware directory
+      - name: Create firmware directory
         run: mkdir -p firmware
 
       - name: Move the single combined file
         id: firmware
         run: |
-          filename=$(basename "${{ matrix.files }}" .yaml)-${{ steps.esphome_version.outputs.version }}.bin
+          version="${{ needs.determine-build.outputs.version }}"
+          filename=$(basename "${{ matrix.files }}" .yaml)-${version}.bin
           find .esphome/build -type f -name "firmware.factory.bin" -exec \
             mv {} "firmware/${filename}" \;
           echo "filename=$filename" >> $GITHUB_OUTPUT
