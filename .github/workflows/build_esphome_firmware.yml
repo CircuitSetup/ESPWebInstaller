@@ -98,7 +98,11 @@ jobs:
             done
           fi
 
-          json=$(printf '%s\n' "${needs_build[@]}" | jq -R . | jq -cs .)
+          if [ ${#needs_build[@]} -eq 0 ]; then
+            json="[]"
+          else
+            json=$(printf '%s\n' "${needs_build[@]}" | jq -R . | jq -cs .)
+          fi
           echo "files=$json" >> $GITHUB_OUTPUT
 
   build-firmware:
