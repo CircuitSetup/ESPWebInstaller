@@ -284,7 +284,10 @@ jobs:
       
           ruby ./scripts/update-espwebtools-manifests.rb
 
-        
+      - name: Generate manifest index
+        run: |
+          jq -n '[inputs]' manifests/manifest_*.json > manifests/index.json
+
       - name: Commit firmware to repo
         if: always()
         run: |
