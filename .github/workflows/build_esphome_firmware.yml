@@ -18,6 +18,10 @@ on:
         description: 'Force build even if firmware is up to date'
         required: false
         default: 'false'
+      esphome_dev:
+        description: 'Use ESPHome dev version'
+        required: false
+        default: 'false'
   schedule:
     - cron: '0 6 * * 1,4'
 
@@ -137,18 +141,74 @@ jobs:
       - name: Install ESPHome
         run: |
           pip3 install wheel
-          pip3 install esphome
+          if [ "${{ github.event.inputs.esphome_dev }}" == "true" ]; then
+            echo "Installing ESPHome dev..."
+            pip3 install git+https://github.com/esphome/esphome.git@dev
+          else
+            echo "Installing ESPHome..."
+            pip3 install esphome
+          fi
 
       - name: Download ESPHome Config Files
         run: |
-          curl -L -o circuitsetup-gdo-default.yaml https://raw.githubusercontent.com/CircuitSetup/circuitsetup-esphome/master/circuitsetup-gdo-default.yaml
-          curl -L -o circuitsetup-gdo-dry-contact.yaml https://raw.githubusercontent.com/CircuitSetup/circuitsetup-esphome/master/circuitsetup-gdo-dry-contact.yaml
-          curl -L -o 6chan_energy_meter_main_board.yaml https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/master/Software/ESPHome/6chan_energy_meter_main_board.yaml
-          curl -L -o 6chan_energy_meter_1-addon.yaml https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/master/Software/ESPHome/6chan_energy_meter_1-addon.yaml
-          curl -L -o 6chan_energy_meter_2-addons.yaml https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/master/Software/ESPHome/6chan_energy_meter_2-addons.yaml
-          curl -L -o 6chan_energy_meter_main_ethernet.yaml https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/master/Software/ESPHome/6chan_energy_meter_main_ethernet.yaml
-          curl -L -o 6chan_energy_meter_1-addon_ethernet.yaml https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/master/Software/ESPHome/6chan_energy_meter_1-addon_ethernet.yaml
-          curl -L -o 6chan_energy_meter_2-addons_ethernet.yaml https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/master/Software/ESPHome/6chan_energy_meter_2-addons_ethernet.yaml
+          check_branch_exists() {
+            repo="$1"
+            branch="$2"
+            http_status=$(curl -s -o /dev/null -w "%{http_code}" "https://api.github.com/repos/${repo}/branches/${branch}")
+            if [ "$http_status" == "200" ]; then
+              echo "true"
+            else
+              echo "false"
+            fi
+          }
+          
+          branch="master"
+          if [ "${{ github.event.inputs.esphome_dev }}" == "true" ]; then
+            echo "ESPHome dev mode requested. Checking branch availability..."
+          
+            gdo_repo="CircuitSetup/circuitsetup-esphome"
+            energy_meter_repo="CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter"
+          
+            if [ "$(check_branch_exists $gdo_repo dev)" == "true" ]; then
+              gdo_branch="dev"
+            else
+              gdo_branch="master"
+              echo "Dev branch not found in $gdo_repo. Using master."
+            fi
+          
+            if [ "$(check_branch_exists $energy_meter_repo dev)" == "true" ]; then
+              energy_meter_branch="dev"
+            else
+              energy_meter_branch="master"
+              echo "Dev branch not found in $energy_meter_repo. Using master."
+            fi
+          else
+            gdo_branch="master"
+            energy_meter_branch="master"
+          fi
+          
+          base_gdo_repo_url="https://raw.githubusercontent.com/CircuitSetup/circuitsetup-esphome/${gdo_branch}"
+          base_energy_meter_repo_url="https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/${energy_meter_branch}/Software/ESPHome"
+          
+          declare -A config_urls
+          
+          config_urls["circuitsetup-gdo-default.yaml"]="${base_gdo_repo_url}/circuitsetup-gdo-default.yaml"
+          config_urls["circuitsetup-gdo-dry-contact.yaml"]="${base_gdo_repo_url}/circuitsetup-gdo-dry-contact.yaml"
+          
+          config_urls["6chan_energy_meter_main_board.yaml"]="${base_energy_meter_repo_url}/6chan_energy_meter_main_board.yaml"
+          config_urls["6chan_energy_meter_1-addon.yaml"]="${base_energy_meter_repo_url}/6chan_energy_meter_1-addon.yaml"
+          config_urls["6chan_energy_meter_2-addons.yaml"]="${base_energy_meter_repo_url}/6chan_energy_meter_2-addons.yaml"
+          config_urls["6chan_energy_meter_main_ethernet.yaml"]="${base_energy_meter_repo_url}/6chan_energy_meter_main_ethernet.yaml"
+          config_urls["6chan_energy_meter_1-addon_ethernet.yaml"]="${base_energy_meter_repo_url}/6chan_energy_meter_1-addon_ethernet.yaml"
+          config_urls["6chan_energy_meter_2-addons_ethernet.yaml"]="${base_energy_meter_repo_url}/6chan_energy_meter_2-addons_ethernet.yaml"
+          
+          echo "Downloading ESPHome configs from branches: circuitsetup-esphome=$gdo_branch, energy_meter=$energy_meter_branch"
+          
+          for file in "${!config_urls[@]}"; do
+            url="${config_urls[$file]}"
+            echo "Downloading $file from $url"
+            curl -L -o "$file" "$url"
+          done
 
       - name: Compile ESPHome
         run: esphome -v compile "${{ matrix.files }}"
