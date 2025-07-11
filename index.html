@@ -81,31 +81,8 @@
     <div class="content">
       <h1>CircuitSetup ESPHome Installer</h1>
       <p>Select your product:</p>
-      <ul class="radios">
-        <li>
-          <label><input type="radio" name="type" value="6_channel_meter" /> 6 Channel Energy Meter Main</label>
-        </li>
-        <li>
-          <label><input type="radio" name="type" value="6_channel_meter_1-addon" /> 6 Channel Energy Meter Main + 1 Add-on</label>
-        </li>
-        <li>
-          <label><input type="radio" name="type" value="6_channel_meter_2-addons" /> 6 Channel Energy Meter Main + 2 Add-ons</label>
-        </li>
-        <li>
-          <label><input type="radio" name="type" value="6_channel_meter_ethernet" /> 6 Channel Energy Meter Main Ethernet</label>
-        </li>
-        <li>
-          <label><input type="radio" name="type" value="6_channel_meter_1-addon_ethernet" /> 6 Channel Energy Meter Main + 1 Add-on Ethernet</label>
-        </li>
-        <li>
-          <label><input type="radio" name="type" value="6_channel_meter_2-addons_ethernet" /> 6 Channel Energy Meter Main + 2 Add-ons Ethernet</label>
-        </li>
-        <li>
-          <label><input type="radio" name="type" value="gdo_dry_contact" /> Garage Door Opener Dry Contact</label>
-        </li>
-        <li>
-          <label><input type="radio" name="type" value="secplus_gdo" /> Security+ Garage Door Opener</label>
-        </li>
+      <ul class="radios" id="product-list">
+        <!-- dynamically populated -->
       </ul>
 
       <p class="button-row" align="center">
@@ -124,5 +101,30 @@
         }
       ));
     </script>
+    <script>
+    async function loadProducts() {
+      const response = await fetch('manifests/index.json');
+      const products = await response.json();
+      const ul = document.getElementById('product-list');
+      
+      products.forEach(product => {
+        const li = document.createElement('li');
+        li.innerHTML = `<label><input type="radio" name="type" value="${product.manifest}" /> ${product.name} (v${product.version})</label>`;
+        ul.appendChild(li);
+      });
+    
+      // Add event listeners after population
+      document.querySelectorAll('input[name="type"]').forEach(radio =>
+        radio.addEventListener("change", () => {
+          const button = document.querySelector('esp-web-install-button');
+          button.manifest = `manifests/${radio.value}`;
+          button.classList.remove('invisible');
+        })
+      );
+    }
+    
+    loadProducts();
+    </script>
+
   </body>
 </html>
