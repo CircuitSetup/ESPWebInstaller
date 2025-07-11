@@ -67,7 +67,7 @@ jobs:
         id: set-files
         run: |
           version="${{ steps.esphome_version.outputs.version }}"
-          force_build="${{ github.event.inputs.force_build }}"
+          force_build="${{ github.event.inputs.force_build || 'false' }}"
           configs=(
             "circuitsetup-gdo-default.yaml"
             "circuitsetup-gdo-dry-contact.yaml"
