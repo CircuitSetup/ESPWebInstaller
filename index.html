@@ -84,7 +84,10 @@
       <ul class="radios" id="product-list">
         <!-- dynamically populated -->
       </ul>
-
+      <p>Select firmware version:</p>
+      <select id="version-select" disabled>
+        <option value="">Select product first</option>
+      </select>
       <p class="button-row" align="center">
         <esp-web-install-button class="invisible"></esp-web-install-button>
       </p>
@@ -102,29 +105,61 @@
       ));
     </script>
     <script>
-    async function loadProducts() {
-      const response = await fetch('manifests/index.json');
-      const products = await response.json();
-      const ul = document.getElementById('product-list');
-      
-      products.forEach(product => {
-        const li = document.createElement('li');
-        li.innerHTML = `<label><input type="radio" name="type" value="${product.manifest}" /> ${product.name} (v${product.version})</label>`;
-        ul.appendChild(li);
-      });
+    let firmwareIndex = [];
     
-      // Add event listeners after population
-      document.querySelectorAll('input[name="type"]').forEach(radio =>
-        radio.addEventListener("change", () => {
-          const button = document.querySelector('esp-web-install-button');
-          button.manifest = `manifests/${radio.value}`;
-          button.classList.remove('invisible');
-        })
-      );
+    async function loadFirmwareIndex() {
+      const response = await fetch('manifests/firmware_index.json');
+      firmwareIndex = await response.json();
     }
     
-    loadProducts();
+    async function init() {
+      await loadFirmwareIndex();
+    
+      const radios = document.querySelectorAll('input[name="type"]');
+      const versionSelect = document.getElementById('version-select');
+      const installButton = document.querySelector('esp-web-install-button');
+    
+      radios.forEach(radio => {
+        radio.addEventListener("change", () => {
+          const product = radio.value;
+    
+          // find product versions
+          const entry = firmwareIndex.find(p => p.product === product);
+          versionSelect.innerHTML = "";
+          if (entry && entry.versions.length > 0) {
+            entry.versions.forEach(v => {
+              const opt = document.createElement('option');
+              opt.value = v.file;
+              opt.textContent = v.version;
+              versionSelect.appendChild(opt);
+            });
+            versionSelect.disabled = false;
+          } else {
+            const opt = document.createElement('option');
+            opt.value = "";
+            opt.textContent = "No firmware available";
+            versionSelect.appendChild(opt);
+            versionSelect.disabled = true;
+          }
+    
+          installButton.classList.add('invisible');
+        });
+      });
+    
+      versionSelect.addEventListener("change", () => {
+        const selectedFile = versionSelect.value;
+        if (selectedFile) {
+          installButton.manifest = selectedFile.replace("firmware/", "manifests/manifest_").replace(".bin", ".json");
+          installButton.classList.remove('invisible');
+        } else {
+          installButton.classList.add('invisible');
+        }
+      });
+    }
+    
+    init();
     </script>
+
 
   </body>
 </html>
