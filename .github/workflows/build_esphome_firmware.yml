@@ -321,56 +321,53 @@ jobs:
         run: |
           mkdir -p manifests
           echo "[" > manifests/firmware_index.json
-
-          declare -A name_map
-
-          # Build name_map[productId] = "Product Display Name"
-          for manifest in manifests/manifest_*.json; do
-            name=$(jq -r '.name' "$manifest")
-            url=$(jq -r '.builds[0].parts[0].path' "$manifest")
-            file=$(basename "$url")
-
-            productId=$(echo "$file" | sed -E 's/-[0-9.]+.*\.bin$//')
-
-            if [ -n "$productId" ] && [ -n "$name" ]; then
-              name_map["$productId"]="$name"
-            fi
-          done
-
+      
           first=true
-          for productId in "${!name_map[@]}"; do
-            name="${name_map[$productId]}"
-
-            # Find up to 5 most recent versions
+      
+          # Map manifest files to friendly product names
+          for manifest in manifests/manifest_*.json; do
+            # Get the productId from the manifest file name
+            productId=$(basename "$manifest" | sed -E 's/^manifest_(.+)\.json$/\1/')
+            
+            # Get product name from manifest
+            name=$(jq -r '.name' "$manifest")
+      
+            # Find up to 5 latest firmware files for this productId
             files=$(ls -t firmware/${productId}-*.bin 2>/dev/null | head -n 5)
-            [ -z "$files" ] && continue
-
+      
+            # Skip if no firmware files found
+            if [ -z "$files" ]; then
+              continue
+            fi
+      
+            # Begin new JSON entry
             if [ "$first" = true ]; then
               first=false
             else
               echo "," >> manifests/firmware_index.json
             fi
-
+      
             echo "  {" >> manifests/firmware_index.json
-            echo "    \"productId\": \"$productId\"," >> manifests/firmware_index.json
-            echo "    \"name\": \"$name\"," >> manifests/firmware_index.json
+            echo "    \"productId\": \"${productId}\"," >> manifests/firmware_index.json
+            echo "    \"name\": \"${name}\"," >> manifests/firmware_index.json
             echo "    \"versions\": [" >> manifests/firmware_index.json
-
+      
             vfirst=true
             for f in $files; do
-              version=$(basename "$f" | sed -E "s/${productId}-([^.]+)\.bin/\1/")
+              # Extract version from filename
+              version=$(basename "$f" | sed -E "s/^${productId}-(.+)\.bin$/\1/")
               if [ "$vfirst" = true ]; then
                 vfirst=false
               else
                 echo "," >> manifests/firmware_index.json
               fi
-              echo "      { \"version\": \"$version\", \"file\": \"$f\" }" >> manifests/firmware_index.json
+              echo "      { \"version\": \"${version}\", \"file\": \"$f\" }" >> manifests/firmware_index.json
             done
-
+      
             echo "    ]" >> manifests/firmware_index.json
             echo "  }" >> manifests/firmware_index.json
           done
-
+      
           echo "]" >> manifests/firmware_index.json
 
       - name: Commit firmware and manifests to repo
