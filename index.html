@@ -96,69 +96,82 @@
         Installer powered by <a href="https://esphome.github.io/esp-web-tools/">ESP Web Tools</a>.
       </div>
       <script>
-      document.querySelectorAll('input[name="type"]').forEach(radio =>
-        radio.addEventListener("change", () => {
-          const button = document.querySelector('esp-web-install-button');
-          button.manifest = `manifests/manifest_${radio.value}.json`;
-          button.classList.remove('invisible');
-        }
-      ));
-    </script>
-    <script>
-    let firmwareIndex = [];
-    
-    async function loadFirmwareIndex() {
-      const response = await fetch('manifests/firmware_index.json');
-      firmwareIndex = await response.json();
-    }
-    
-    async function init() {
-      await loadFirmwareIndex();
-    
-      const radios = document.querySelectorAll('input[name="type"]');
-      const versionSelect = document.getElementById('version-select');
-      const installButton = document.querySelector('esp-web-install-button');
-    
-      radios.forEach(radio => {
-        radio.addEventListener("change", () => {
-          const product = radio.value;
-    
-          // find product versions
-          const entry = firmwareIndex.find(p => p.product === product);
-          versionSelect.innerHTML = "";
-          if (entry && entry.versions.length > 0) {
-            entry.versions.forEach(v => {
-              const opt = document.createElement('option');
-              opt.value = v.file;
-              opt.textContent = v.version;
-              versionSelect.appendChild(opt);
-            });
-            versionSelect.disabled = false;
-          } else {
-            const opt = document.createElement('option');
-            opt.value = "";
-            opt.textContent = "No firmware available";
-            versionSelect.appendChild(opt);
-            versionSelect.disabled = true;
-          }
-    
-          installButton.classList.add('invisible');
+      let firmwareIndex = [];
+      
+      async function loadFirmwareIndex() {
+        const response = await fetch('manifests/firmware_index.json');
+        firmwareIndex = await response.json();
+      }
+      
+      function createProductRadios() {
+        const productList = document.getElementById("product-list");
+        firmwareIndex.forEach(product => {
+          const li = document.createElement("li");
+          const label = document.createElement("label");
+          const radio = document.createElement("input");
+      
+          radio.type = "radio";
+          radio.name = "type";
+          radio.value = product.productId;
+      
+          label.appendChild(radio);
+          label.append(` ${product.name}`);
+          li.appendChild(label);
+          productList.appendChild(li);
         });
-      });
-    
-      versionSelect.addEventListener("change", () => {
-        const selectedFile = versionSelect.value;
-        if (selectedFile) {
-          installButton.manifest = selectedFile.replace("firmware/", "manifests/manifest_").replace(".bin", ".json");
-          installButton.classList.remove('invisible');
-        } else {
-          installButton.classList.add('invisible');
-        }
-      });
-    }
-    
-    init();
-    </script>
+      }
+      
+      async function init() {
+        await loadFirmwareIndex();
+        createProductRadios();
+      
+        const versionSelect = document.getElementById("version-select");
+        const installButton = document.querySelector("esp-web-install-button");
+      
+        document.querySelectorAll('input[name="type"]').forEach(radio => {
+          radio.addEventListener("change", () => {
+            const productId = radio.value;
+            const entry = firmwareIndex.find(p => p.productId === productId);
+      
+            versionSelect.innerHTML = "";
+            installButton.classList.add("invisible");
+      
+            if (entry && entry.versions.length > 0) {
+              entry.versions.forEach(v => {
+                const opt = document.createElement("option");
+                opt.value = v.version;
+                opt.textContent = v.version;
+                versionSelect.appendChild(opt);
+              });
+              versionSelect.disabled = false;
+            } else {
+              const opt = document.createElement("option");
+              opt.value = "";
+              opt.textContent = "No firmware available";
+              versionSelect.appendChild(opt);
+              versionSelect.disabled = true;
+            }
+      
+            versionSelect.setAttribute("data-product", productId);
+          });
+        });
+      
+        versionSelect.addEventListener("change", () => {
+          const selectedVersion = versionSelect.value;
+          const productId = versionSelect.getAttribute("data-product");
+      
+          if (selectedVersion && productId) {
+            installButton.manifest = `manifests/manifest_${productId}.json`;
+            installButton.classList.remove("invisible");
+          } else {
+            installButton.classList.add("invisible");
+          }
+        });
+      }
+      
+      init();
+      </script>
+
 
 
   </body>
