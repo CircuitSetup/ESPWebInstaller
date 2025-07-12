@@ -22,6 +22,10 @@ on:
         description: 'Use ESPHome dev version'
         required: false
         default: 'false'
+      generate_json_only:
+        description: 'Only generate manifest/firmware_index JSON files'
+        required: false
+        default: 'false'
   schedule:
     - cron: '0 6 * * 1,4'
 
@@ -123,7 +127,7 @@ jobs:
   build-firmware:
     needs: determine-build
     runs-on: ubuntu-latest
-    if: needs.determine-build.outputs.files != '[]'
+    if: needs.determine-build.outputs.files != '[]' && github.event.inputs.generate_json_only != 'true'
 
     strategy:
       matrix:
@@ -284,10 +288,14 @@ jobs:
       
           ruby ./scripts/update-espwebtools-manifests.rb
 
-      - name: Generate manifest index
-        run: |
-          jq -n '[inputs]' manifests/manifest_*.json > manifests/index.json
-
+  generate-index:
+    runs-on: ubuntu-latest
+    needs: [determine-build]  # optionally depends on determine-build
+    if: always()
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      
       - name: Generate firmware version index
         run: |
           mkdir -p manifests
@@ -331,19 +339,18 @@ jobs:
       
           echo "]" >> manifests/firmware_index.json
 
-      - name: Commit firmware to repo
-        if: always()
+      - name: Commit firmware and manifests to repo
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "github-actions@github.com"
           git config pull.rebase false
           git add firmware
           git add manifests
-          git commit -m "Add compiled firmware for all devices" || echo "No changes to commit."
-          
+          git commit -m "Add compiled firmware and updated manifests" || echo "No changes to commit."
+  
           attempts=0
           max_attempts=5
-          
+  
           until git pull origin main --no-edit && git push origin HEAD:main; do
             attempts=$((attempts+1))
             if [ $attempts -ge $max_attempts ]; then
