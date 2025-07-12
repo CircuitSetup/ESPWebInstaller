@@ -322,36 +322,28 @@ jobs:
           mkdir -p manifests
           echo "[" > manifests/firmware_index.json
 
-          # Build map: product_name -> [ { version, file }... ]
-          declare -A product_versions
+          declare -A name_map
 
+          # Build name_map[productId] = "Product Display Name"
           for manifest in manifests/manifest_*.json; do
             name=$(jq -r '.name' "$manifest")
-            path=$(jq -r '.builds[0].parts[0].path' "$manifest")
+            url=$(jq -r '.builds[0].parts[0].path' "$manifest")
+            file=$(basename "$url")
 
-            file=$(basename "$path")
-            full_path="firmware/$file"
+            productId=$(echo "$file" | sed -E 's/-[0-9.]+.*\.bin$//')
 
-            if [ ! -f "$full_path" ]; then
-              echo "Firmware file $full_path not found. Skipping."
-              continue
+            if [ -n "$productId" ] && [ -n "$name" ]; then
+              name_map["$productId"]="$name"
             fi
-
-            version=$(echo "$file" | sed -E 's/^.*-([0-9.]+.*)\.bin$/\1/')
-            if [ -z "$version" ]; then
-              echo "Could not extract version from $file"
-              continue
-            fi
-
-            key=$(echo "$name" | sed 's/"/\\"/g') # escape quotes
-
-            entry="{ \"version\": \"$version\", \"file\": \"$full_path\" }"
-            product_versions["$key"]+="$entry"$'\n'
           done
 
           first=true
-          for key in "${!product_versions[@]}"; do
-            versions=$(echo "${product_versions[$key]}" | sort -r | head -n 5)
+          for productId in "${!name_map[@]}"; do
+            name="${name_map[$productId]}"
+
+            # Find up to 5 most recent versions
+            files=$(ls -t firmware/${productId}-*.bin 2>/dev/null | head -n 5)
+            [ -z "$files" ] && continue
 
             if [ "$first" = true ]; then
               first=false
@@ -360,20 +352,20 @@ jobs:
             fi
 
             echo "  {" >> manifests/firmware_index.json
-            echo "    \"product\": \"$(echo "$versions" | head -n1 | jq -r '.file' | xargs basename)\"," >> manifests/firmware_index.json
-            echo "    \"name\": \"$key\"," >> manifests/firmware_index.json
+            echo "    \"productId\": \"$productId\"," >> manifests/firmware_index.json
+            echo "    \"name\": \"$name\"," >> manifests/firmware_index.json
             echo "    \"versions\": [" >> manifests/firmware_index.json
 
             vfirst=true
-            while IFS= read -r version_entry; do
-              if [ -z "$version_entry" ]; then continue; fi
+            for f in $files; do
+              version=$(basename "$f" | sed -E "s/${productId}-([^.]+)\.bin/\1/")
               if [ "$vfirst" = true ]; then
                 vfirst=false
               else
                 echo "," >> manifests/firmware_index.json
               fi
-              echo "      $version_entry" >> manifests/firmware_index.json
-            done <<< "$versions"
+              echo "      { \"version\": \"$version\", \"file\": \"$f\" }" >> manifests/firmware_index.json
+            done
 
             echo "    ]" >> manifests/firmware_index.json
             echo "  }" >> manifests/firmware_index.json
