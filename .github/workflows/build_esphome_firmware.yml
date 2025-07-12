@@ -321,27 +321,37 @@ jobs:
         run: |
           mkdir -p manifests
           echo "[" > manifests/firmware_index.json
-          
-          first=true
+
+          # Build map: product_name -> [ { version, file }... ]
+          declare -A product_versions
+
           for manifest in manifests/manifest_*.json; do
-            # Extract product name and firmware file path from the manifest
             name=$(jq -r '.name' "$manifest")
             path=$(jq -r '.builds[0].parts[0].path' "$manifest")
 
-            # Convert to relative firmware path
-            file_path=$(basename "$path")
-            full_path="firmware/$file_path"
+            file=$(basename "$path")
+            full_path="firmware/$file"
 
             if [ ! -f "$full_path" ]; then
-              echo "Warning: Firmware file $full_path not found. Skipping $manifest"
+              echo "Firmware file $full_path not found. Skipping."
               continue
             fi
 
-            version=$(echo "$file_path" | sed -E 's/^.*-([0-9.]+.*)\.bin$/\1/')
+            version=$(echo "$file" | sed -E 's/^.*-([0-9.]+.*)\.bin$/\1/')
             if [ -z "$version" ]; then
-              echo "Could not parse version from $file_path"
+              echo "Could not extract version from $file"
               continue
             fi
+
+            key=$(echo "$name" | sed 's/"/\\"/g') # escape quotes
+
+            entry="{ \"version\": \"$version\", \"file\": \"$full_path\" }"
+            product_versions["$key"]+="$entry"$'\n'
+          done
+
+          first=true
+          for key in "${!product_versions[@]}"; do
+            versions=$(echo "${product_versions[$key]}" | sort -r | head -n 5)
 
             if [ "$first" = true ]; then
               first=false
@@ -350,16 +360,26 @@ jobs:
             fi
 
             echo "  {" >> manifests/firmware_index.json
-            echo "    \"product\": \"$file_path\"," >> manifests/firmware_index.json
-            echo "    \"name\": \"$name\"," >> manifests/firmware_index.json
+            echo "    \"product\": \"$(echo "$versions" | head -n1 | jq -r '.file' | xargs basename)\"," >> manifests/firmware_index.json
+            echo "    \"name\": \"$key\"," >> manifests/firmware_index.json
             echo "    \"versions\": [" >> manifests/firmware_index.json
-            echo "      { \"version\": \"$version\", \"file\": \"$full_path\" }" >> manifests/firmware_index.json
+
+            vfirst=true
+            while IFS= read -r version_entry; do
+              if [ -z "$version_entry" ]; then continue; fi
+              if [ "$vfirst" = true ]; then
+                vfirst=false
+              else
+                echo "," >> manifests/firmware_index.json
+              fi
+              echo "      $version_entry" >> manifests/firmware_index.json
+            done <<< "$versions"
+
             echo "    ]" >> manifests/firmware_index.json
             echo "  }" >> manifests/firmware_index.json
           done
 
           echo "]" >> manifests/firmware_index.json
-
 
       - name: Commit firmware and manifests to repo
         run: |
