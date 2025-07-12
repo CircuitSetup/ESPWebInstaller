@@ -324,45 +324,42 @@ jobs:
           
           first=true
           for manifest in manifests/manifest_*.json; do
-            # Extract productId from file name (remove prefix and .json suffix)
-            productId=$(basename "$manifest" | sed -E 's/^manifest_(.+)\.json$/\1/')
-            
-            # Get the product name from the manifest JSON
+            # Extract product name and firmware file path from the manifest
             name=$(jq -r '.name' "$manifest")
-            
-            # Find up to 5 recent firmware builds for this product
-            files=$(ls -t firmware/${productId}-*.bin 2>/dev/null | head -n 5)
-            if [ -z "$files" ]; then
+            path=$(jq -r '.builds[0].parts[0].path' "$manifest")
+
+            # Convert to relative firmware path
+            file_path=$(basename "$path")
+            full_path="firmware/$file_path"
+
+            if [ ! -f "$full_path" ]; then
+              echo "Warning: Firmware file $full_path not found. Skipping $manifest"
               continue
             fi
-          
+
+            version=$(echo "$file_path" | sed -E 's/^.*-([0-9.]+.*)\.bin$/\1/')
+            if [ -z "$version" ]; then
+              echo "Could not parse version from $file_path"
+              continue
+            fi
+
             if [ "$first" = true ]; then
               first=false
             else
               echo "," >> manifests/firmware_index.json
             fi
-          
+
             echo "  {" >> manifests/firmware_index.json
-            echo "    \"productId\": \"$productId\"," >> manifests/firmware_index.json
+            echo "    \"product\": \"$file_path\"," >> manifests/firmware_index.json
             echo "    \"name\": \"$name\"," >> manifests/firmware_index.json
             echo "    \"versions\": [" >> manifests/firmware_index.json
-          
-            vfirst=true
-            for f in $files; do
-              version=$(echo "$f" | sed -E "s/firmware\/${productId}-([^.]+)\.bin/\1/")
-              if [ "$vfirst" = true ]; then
-                vfirst=false
-              else
-                echo "," >> manifests/firmware_index.json
-              fi
-              echo "      { \"version\": \"$version\", \"file\": \"$f\" }" >> manifests/firmware_index.json
-            done
-          
+            echo "      { \"version\": \"$version\", \"file\": \"$full_path\" }" >> manifests/firmware_index.json
             echo "    ]" >> manifests/firmware_index.json
             echo "  }" >> manifests/firmware_index.json
           done
-          
+
           echo "]" >> manifests/firmware_index.json
+
 
       - name: Commit firmware and manifests to repo
         run: |
