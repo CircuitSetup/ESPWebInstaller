@@ -299,32 +299,36 @@ jobs:
       - name: Generate firmware version index
         run: |
           mkdir -p manifests
-      
           echo "[" > manifests/firmware_index.json
-      
+          
           first=true
-          for config in circuitsetup-gdo-default circuitsetup-gdo-dry-contact 6chan_energy_meter_main_board 6chan_energy_meter_1-addon 6chan_energy_meter_2-addons 6chan_energy_meter_3-addons 6chan_energy_meter_main_ethernet 6chan_energy_meter_1-addon_ethernet 6chan_energy_meter_2-addons_ethernet 6chan_energy_meter_3-addons_ethernet; do
-            # list files sorted by modified time descending
-            files=$(ls -t firmware/${config}-*.bin 2>/dev/null | head -n 5)
-      
-            # skip if no builds exist
+          for manifest in manifests/manifest_*.json; do
+            # Extract productId from file name (remove prefix and .json suffix)
+            productId=$(basename "$manifest" | sed -E 's/^manifest_(.+)\.json$/\1/')
+            
+            # Get the product name from the manifest JSON
+            name=$(jq -r '.name' "$manifest")
+            
+            # Find up to 5 recent firmware builds for this product
+            files=$(ls -t firmware/${productId}-*.bin 2>/dev/null | head -n 5)
             if [ -z "$files" ]; then
               continue
             fi
-      
+          
             if [ "$first" = true ]; then
               first=false
             else
               echo "," >> manifests/firmware_index.json
             fi
-      
+          
             echo "  {" >> manifests/firmware_index.json
-            echo "    \"product\": \"$config\"," >> manifests/firmware_index.json
+            echo "    \"productId\": \"$productId\"," >> manifests/firmware_index.json
+            echo "    \"name\": \"$name\"," >> manifests/firmware_index.json
             echo "    \"versions\": [" >> manifests/firmware_index.json
-      
+          
             vfirst=true
             for f in $files; do
-              version=$(echo "$f" | sed -E "s/firmware\/${config}-([^.]+)\.bin/\1/")
+              version=$(echo "$f" | sed -E "s/firmware\/${productId}-([^.]+)\.bin/\1/")
               if [ "$vfirst" = true ]; then
                 vfirst=false
               else
@@ -332,11 +336,11 @@ jobs:
               fi
               echo "      { \"version\": \"$version\", \"file\": \"$f\" }" >> manifests/firmware_index.json
             done
-      
+          
             echo "    ]" >> manifests/firmware_index.json
             echo "  }" >> manifests/firmware_index.json
           done
-      
+          
           echo "]" >> manifests/firmware_index.json
 
       - name: Commit firmware and manifests to repo
