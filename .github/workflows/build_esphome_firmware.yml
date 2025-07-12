@@ -308,6 +308,14 @@ jobs:
           pattern: manifests-*
           path: manifests
         continue-on-error: true  # fallback to checked-out version if not present
+
+      - name: Flatten downloaded manifests
+        run: |
+          find manifests -type f -name "manifest_*.json" -exec cp {} manifests/ \;
+
+      - name: Clean up manifest subdirectories
+        run: |
+          find manifests -mindepth 1 -type d -exec rm -rf {} +
       
       - name: Generate firmware version index
         run: |
