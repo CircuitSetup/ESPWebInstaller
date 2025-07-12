@@ -297,7 +297,7 @@ jobs:
   generate-index:
     runs-on: ubuntu-latest
     needs: [build-firmware, determine-build]  # optionally depends on these
-    if: always()
+    if: github.event.inputs.generate_json_only == 'true' || needs.determine-build.outputs.files != '[]'
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
