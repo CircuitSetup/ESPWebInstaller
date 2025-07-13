@@ -328,16 +328,21 @@ jobs:
       
       - name: Generate firmware version index
         run: |
-          mkdir -p manifests
+          mkdir -p manifests_combined
           echo "[" > manifests/firmware_index.json
       
           first=true
       
           for manifest in manifests_combined/manifest_*.json; do
-            productId=$(basename "$manifest" | sed -E 's/^manifest_(.+)\.json$/\1/')
             name=$(jq -r '.name' "$manifest")
+            productId=$(jq -r '.firmwarePrefix' "$manifest")
       
-            # Match firmware files that start with productId and end with .bin
+            # Skip if required fields are missing
+            if [ "$productId" = "null" ] || [ "$name" = "null" ]; then
+              echo "Skipping manifest $manifest due to missing fields"
+              continue
+            fi
+      
             files=$(find firmware -type f -name "${productId}-*.bin" | sort -r | head -n 5)
       
             if [ -z "$files" ]; then
@@ -372,7 +377,7 @@ jobs:
             echo "    ]" >> manifests/firmware_index.json
             echo "  }" >> manifests/firmware_index.json
           done
-      
+
           echo "]" >> manifests/firmware_index.json
 
       - name: Commit firmware and manifests to repo
