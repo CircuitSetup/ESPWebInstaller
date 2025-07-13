@@ -310,62 +310,80 @@ jobs:
           pattern: manifests-*
           path: manifests
         continue-on-error: true  # fallback to checked-out version if not present
-
+      
       - name: Merge manifests (downloaded + committed)
         run: |
           mkdir -p manifests_combined
-      
-          # Copy manifests already committed to repo
-          cp -n manifests/manifest_*.json manifests_combined/ 2>/dev/null || true
-      
-          # Copy manifests downloaded from artifacts (if any)
-          find manifests -type f -name "manifest_*.json" -exec cp -n {} manifests_combined/ \;
-
-
-      - name: Clean up manifest subdirectories
-        run: |
-          find manifests -mindepth 1 -type d -exec rm -rf {} +
-      
+  
+          # Copy committed manifests
+          if compgen -G "manifests/manifest_*.json" > /dev/null; then
+            cp -v manifests/manifest_*.json manifests_combined/
+          fi
+  
+          # Copy downloaded artifacts (if any)
+          if compgen -G "artifact_manifests/**/manifest_*.json" > /dev/null; then
+            find artifact_manifests -type f -name "manifest_*.json" -exec cp -vn {} manifests_combined/ \;
+          fi
+  
       - name: Generate firmware version index
         run: |
-          mkdir -p manifests_combined
+          mkdir -p manifests
           echo "[" > manifests/firmware_index.json
-      
+  
           first=true
-      
+  
           for manifest in manifests_combined/manifest_*.json; do
+            manifest_file=$(basename "$manifest")
+  
+            # Mapping from manifest filename to firmware filename prefix
+            declare -A manifest_to_prefix=(
+              ["manifest_6_channel_meter.json"]="6chan_energy_meter_main_board"
+              ["manifest_6_channel_meter_1-addon.json"]="6chan_energy_meter_1-addon"
+              ["manifest_6_channel_meter_2-addons.json"]="6chan_energy_meter_2-addons"
+              ["manifest_6_channel_meter_3-addons.json"]="6chan_energy_meter_3-addons"
+              ["manifest_6_channel_meter_ethernet.json"]="6chan_energy_meter_main_ethernet"
+              ["manifest_6_channel_meter_1-addon_ethernet.json"]="6chan_energy_meter_1-addon_ethernet"
+              ["manifest_6_channel_meter_2-addons_ethernet.json"]="6chan_energy_meter_2-addons_ethernet"
+              ["manifest_6_channel_meter_3-addons_ethernet.json"]="6chan_energy_meter_3-addons_ethernet"
+              ["manifest_secplus_gdo.json"]="circuitsetup-gdo-default"
+              ["manifest_gdo_dry_contact.json"]="circuitsetup-gdo-dry-contact"
+            )
+  
+            productId="${manifest_to_prefix[$manifest_file]}"
+            if [ -z "$productId" ]; then
+              echo "⚠️  Skipping manifest $manifest_file — no firmware prefix mapping found"
+              continue
+            fi
+  
             name=$(jq -r '.name' "$manifest")
-            productId=$(jq -r '.firmwarePrefix' "$manifest")
-      
-            # Skip if required fields are missing
-            if [ "$productId" = "null" ] || [ "$name" = "null" ]; then
-              echo "Skipping manifest $manifest due to missing fields"
+            if [ "$name" = "null" ]; then
+              echo "⚠️  Skipping manifest $manifest_file — missing .name field"
               continue
             fi
-      
+  
             files=$(find firmware -type f -name "${productId}-*.bin" | sort -r | head -n 5)
-      
             if [ -z "$files" ]; then
+              echo "ℹ️  No firmware files found for $productId"
               continue
             fi
-      
+  
             if [ "$first" = true ]; then
               first=false
             else
               echo "," >> manifests/firmware_index.json
             fi
-      
+  
             echo "  {" >> manifests/firmware_index.json
             echo "    \"productId\": \"${productId}\"," >> manifests/firmware_index.json
             echo "    \"name\": \"${name}\"," >> manifests/firmware_index.json
             echo "    \"versions\": [" >> manifests/firmware_index.json
-      
+  
             vfirst=true
             for f in $files; do
               fname=$(basename "$f")
               version=${fname#${productId}-}
               version=${version%.bin}
-      
+  
               if [ "$vfirst" = true ]; then
                 vfirst=false
               else
@@ -373,11 +391,11 @@ jobs:
               fi
               echo "      { \"version\": \"${version}\", \"file\": \"$f\" }" >> manifests/firmware_index.json
             done
-      
+  
             echo "    ]" >> manifests/firmware_index.json
             echo "  }" >> manifests/firmware_index.json
           done
-
+  
           echo "]" >> manifests/firmware_index.json
 
       - name: Commit firmware and manifests to repo
