@@ -351,19 +351,19 @@ jobs:
   
             productId="${manifest_to_prefix[$manifest_file]}"
             if [ -z "$productId" ]; then
-              echo "⚠️  Skipping manifest $manifest_file — no firmware prefix mapping found"
+              echo "Skipping manifest $manifest_file — no firmware prefix mapping found"
               continue
             fi
   
             name=$(jq -r '.name' "$manifest")
             if [ "$name" = "null" ]; then
-              echo "⚠️  Skipping manifest $manifest_file — missing .name field"
+              echo "Skipping manifest $manifest_file — missing .name field"
               continue
             fi
   
             files=$(find firmware -type f -name "${productId}-*.bin" | sort -r | head -n 5)
             if [ -z "$files" ]; then
-              echo "ℹ️  No firmware files found for $productId"
+              echo "No firmware files found for $productId"
               continue
             fi
   
@@ -397,6 +397,10 @@ jobs:
           done
   
           echo "]" >> manifests/firmware_index.json
+      
+      - name: Clean up manifest subdirectories
+        run: |
+          find manifests -mindepth 1 -type d -exec rm -rf {} +
 
       - name: Commit firmware and manifests to repo
         run: |
