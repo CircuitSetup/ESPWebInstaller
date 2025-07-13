@@ -326,23 +326,17 @@ jobs:
       
           first=true
       
-          # Map manifest files to friendly product names
           for manifest in manifests/manifest_*.json; do
-            # Get the productId from the manifest file name
             productId=$(basename "$manifest" | sed -E 's/^manifest_(.+)\.json$/\1/')
-            
-            # Get product name from manifest
             name=$(jq -r '.name' "$manifest")
       
-            # Find up to 5 latest firmware files for this productId
-            files=$(ls -t firmware/${productId}-*.bin 2>/dev/null | head -n 5)
+            # Match firmware files that start with productId and end with .bin
+            files=$(find firmware -type f -name "${productId}-*.bin" | sort -r | head -n 5)
       
-            # Skip if no firmware files found
             if [ -z "$files" ]; then
               continue
             fi
       
-            # Begin new JSON entry
             if [ "$first" = true ]; then
               first=false
             else
@@ -356,8 +350,10 @@ jobs:
       
             vfirst=true
             for f in $files; do
-              # Extract version from filename
-              version=$(basename "$f" | sed -E "s/^${productId}-(.+)\.bin$/\1/")
+              fname=$(basename "$f")
+              version=${fname#${productId}-}
+              version=${version%.bin}
+      
               if [ "$vfirst" = true ]; then
                 vfirst=false
               else
