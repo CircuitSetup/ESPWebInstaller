@@ -311,9 +311,16 @@ jobs:
           path: manifests
         continue-on-error: true  # fallback to checked-out version if not present
 
-      - name: Flatten downloaded manifests
+      - name: Merge manifests (downloaded + committed)
         run: |
-          find manifests -type f -name "manifest_*.json" -exec cp {} manifests/ \;
+          mkdir -p manifests_combined
+      
+          # Copy manifests already committed to repo
+          cp -n manifests/manifest_*.json manifests_combined/ 2>/dev/null || true
+      
+          # Copy manifests downloaded from artifacts (if any)
+          find manifests -type f -name "manifest_*.json" -exec cp -n {} manifests_combined/ \;
+
 
       - name: Clean up manifest subdirectories
         run: |
@@ -326,7 +333,7 @@ jobs:
       
           first=true
       
-          for manifest in manifests/manifest_*.json; do
+          for manifest in manifests_combined/manifest_*.json; do
             productId=$(basename "$manifest" | sed -E 's/^manifest_(.+)\.json$/\1/')
             name=$(jq -r '.name' "$manifest")
       
