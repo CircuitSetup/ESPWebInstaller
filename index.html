@@ -135,15 +135,21 @@
       
             versionSelect.innerHTML = "";
             installButton.classList.add("invisible");
-      
+            
             if (entry && entry.versions.length > 0) {
-              entry.versions.forEach(v => {
+              entry.versions.forEach((v, i) => {
                 const opt = document.createElement("option");
                 opt.value = v.version;
                 opt.textContent = v.version;
+                if (i === 0) opt.selected = true; // auto-select latest
                 versionSelect.appendChild(opt);
               });
               versionSelect.disabled = false;
+            
+              versionSelect.setAttribute("data-product", productId);
+            
+              //Manually trigger change to activate Connect button
+              versionSelect.dispatchEvent(new Event("change"));
             } else {
               const opt = document.createElement("option");
               opt.value = "";
@@ -151,7 +157,6 @@
               versionSelect.appendChild(opt);
               versionSelect.disabled = true;
             }
-      
             versionSelect.setAttribute("data-product", productId);
           });
         });
