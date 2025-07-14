@@ -178,7 +178,7 @@
           const productId = versionSelect.getAttribute("data-product");
       
           if (selectedVersion && productId) {
-            installButton.manifest = `manifests/manifest_${productId}.json`;
+            installButton.manifest = `manifests/manifest_${productId}-${selectedVersion}.json`;
             installButton.classList.remove("invisible");
           } else {
             installButton.classList.add("invisible");
