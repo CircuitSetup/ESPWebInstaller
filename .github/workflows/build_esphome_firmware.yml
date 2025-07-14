@@ -265,8 +265,6 @@ jobs:
             EOF
           )
       
-          mkdir -p manifests
-      
           matched_entry=""
           while IFS="|" read -r yaml name mcu; do
             if [[ "$yaml" == "$config_file" ]]; then
@@ -319,6 +317,9 @@ jobs:
           pattern: manifests-*
           path: manifests
         continue-on-error: true  # fallback to checked-out version if not present
+        
+      - name: Generate missing manifests from existing firmware
+        run: ./scripts/generate-missing-manifests.sh
       
       - name: Merge manifests (downloaded + committed)
         run: |
