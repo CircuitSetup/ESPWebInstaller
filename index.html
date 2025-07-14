@@ -115,24 +115,68 @@
         firmwareIndex = await response.json();
       }
       
-      function createProductRadios() {
-        const productList = document.getElementById("product-list");
-        firmwareIndex.forEach(product => {
-          const li = document.createElement("li");
-          const label = document.createElement("label");
-          const radio = document.createElement("input");
+      function groupProducts(products) {
+        const groups = {
+          GDO: [],
+          Meter: [],
+          Ethernet: []
+        };
       
-          radio.type = "radio";
-          radio.name = "type";
-          radio.value = product.productId;
-      
-          label.appendChild(radio);
-          label.append(` ${product.name}`);
-          li.appendChild(label);
-          productList.appendChild(li);
+        products.forEach(p => {
+          if (p.productId.includes('gdo')) {
+            groups.GDO.push(p);
+          } else if (p.productId.includes('ethernet')) {
+            groups.Ethernet.push(p);
+          } else {
+            groups.Meter.push(p);
+          }
         });
+      
+        // Sort each group alphabetically by name
+        Object.values(groups).forEach(group => group.sort((a, b) => a.name.localeCompare(b.name)));
+      
+        return groups;
       }
       
+      function createProductRadios() {
+        const productList = document.getElementById("product-list");
+        const groups = groupProducts(firmwareIndex);
+      
+        for (const [groupName, products] of Object.entries(groups)) {
+          const header = document.createElement("h3");
+          header.textContent = groupName;
+          productList.appendChild(header);
+      
+          products.forEach(product => {
+            const li = document.createElement("li");
+            const label = document.createElement("label");
+            const radio = document.createElement("input");
+      
+            radio.type = "radio";
+            radio.name = "type";
+            radio.value = product.productId;
+      
+            label.appendChild(radio);
+            label.append(` ${product.name}`);
+            li.appendChild(label);
+            productList.appendChild(li);
+          });
+        }
+      }
+      
+      function compareVersions(a, b) {
+        const parse = v => v.split(/[-.]/).map(x => isNaN(x) ? x : parseInt(x));
+        const pa = parse(a), pb = parse(b);
+      
+        for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+          if (pa[i] === undefined) return -1;
+          if (pb[i] === undefined) return 1;
+          if (pa[i] > pb[i]) return -1;
+          if (pa[i] < pb[i]) return 1;
+        }
+        return 0;
+      }
+
       async function init() {
         await loadFirmwareIndex();
         createProductRadios();
@@ -149,11 +193,12 @@
             installButton.classList.add("invisible");
             
             if (entry && entry.versions.length > 0) {
-              entry.versions.forEach((v, i) => {
+              const sortedVersions = [...entry.versions].sort((a, b) => compareVersions(a.version, b.version));
+              sortedVersions.forEach((v, i) => {
                 const opt = document.createElement("option");
                 opt.value = v.version;
                 opt.textContent = v.version;
-                if (i === 0) opt.selected = true; // auto-select latest
+                if (i === 0) opt.selected = true; // latest
                 versionSelect.appendChild(opt);
               });
               versionSelect.disabled = false;
