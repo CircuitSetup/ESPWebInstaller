@@ -18,7 +18,7 @@ declare -A name_map=(
 
 for bin_file in firmware/*.bin; do
   fname=$(basename "$bin_file")
-  product="${fname%%-*}"
+  product="${fname%-*}"
   version="${fname#${product}-}"
   version="${version%.bin}"
 
