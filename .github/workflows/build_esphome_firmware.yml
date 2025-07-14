@@ -153,8 +153,12 @@ jobs:
             pip3 install esphome
           fi
 
-      - name: Download ESPHome Config Files
+      - name: Download ESPHome Config File
         run: |
+          source scripts/configs.sh
+      
+          config_file="${{ matrix.files }}"
+      
           check_branch_exists() {
             repo="$1"
             branch="$2"
@@ -165,46 +169,32 @@ jobs:
               echo "false"
             fi
           }
-          
-          branch="master"
+      
           if [ "${{ github.event.inputs.esphome_dev }}" == "true" ]; then
-            echo "ESPHome dev mode requested. Checking branch availability..."
-          
-            gdo_repo="CircuitSetup/circuitsetup-esphome"
-            energy_meter_repo="CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter"
-          
-            if [ "$(check_branch_exists $gdo_repo dev)" == "true" ]; then
-              gdo_branch="dev"
-            else
+            gdo_branch="dev"
+            energy_meter_branch="dev"
+      
+            if [ "$(check_branch_exists CircuitSetup/circuitsetup-esphome dev)" != "true" ]; then
               gdo_branch="master"
-              echo "Dev branch not found in $gdo_repo. Using master."
             fi
-          
-            if [ "$(check_branch_exists $energy_meter_repo dev)" == "true" ]; then
-              energy_meter_branch="dev"
-            else
+            if [ "$(check_branch_exists CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter dev)" != "true" ]; then
               energy_meter_branch="master"
-              echo "Dev branch not found in $energy_meter_repo. Using master."
             fi
           else
             gdo_branch="master"
             energy_meter_branch="master"
           fi
-          
-          base_gdo_repo_url="https://raw.githubusercontent.com/CircuitSetup/circuitsetup-esphome/${gdo_branch}"
-          base_energy_meter_repo_url="https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/${energy_meter_branch}/Software/ESPHome"
-          
-          source scripts/configs.sh
-          
-          declare -A config_urls
-          
-          for config_file in "${CONFIG_LIST[@]}"; do
-            if [[ "$config_file" == circuitsetup-gdo-* ]]; then
-              config_urls["$config_file"]="${base_gdo_repo_url}/${config_file}"
-            else
-              config_urls["$config_file"]="${base_energy_meter_repo_url}/${config_file}"
-            fi
-          done
+      
+          # Decide repo based on config name
+          if [[ "$config_file" == circuitsetup-gdo-* ]]; then
+            url="https://raw.githubusercontent.com/CircuitSetup/circuitsetup-esphome/${gdo_branch}/${config_file}"
+          else
+            url="https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/${energy_meter_branch}/Software/ESPHome/${config_file}"
+          fi
+      
+          echo "Downloading $config_file from $url"
+          curl -fSL "$url" -o "$config_file"
+
 
       - name: Compile ESPHome
         run: esphome -v compile "${{ matrix.files }}"
