@@ -81,31 +81,19 @@ jobs:
       - name: Determine firmware needing build
         id: set-files
         run: |
+          source ./scripts/configs.sh
           version="${{ steps.esphome_version.outputs.version }}"
           force_build="${{ github.event.inputs.force_build }}"
           force_build="${force_build:-false}"
-
-          configs=(
-            "circuitsetup-gdo-default.yaml"
-            "circuitsetup-gdo-dry-contact.yaml"
-            "6chan_energy_meter_main_board.yaml"
-            "6chan_energy_meter_1-addon.yaml"
-            "6chan_energy_meter_2-addons.yaml"
-            "6chan_energy_meter_3-addons.yaml"
-            "6chan_energy_meter_main_ethernet.yaml"
-            "6chan_energy_meter_1-addon_ethernet.yaml"
-            "6chan_energy_meter_2-addons_ethernet.yaml"
-            "6chan_energy_meter_3-addons_ethernet.yaml"
-          )
           
           needs_build=()
           mkdir -p firmware
       
           if [[ "$force_build" == "true" ]]; then
             echo "Force build enabled. Adding all configs."
-            needs_build=("${configs[@]}")
+            needs_build=("${CONFIG_LIST[@]}")
           else
-            for config in "${configs[@]}"; do
+            for config in "${CONFIG_LIST[@]}"; do
               base=$(basename "$config" .yaml)
               expected="firmware/${base}-${version}.bin"
               if [[ ! -f "$expected" ]]; then
@@ -122,6 +110,7 @@ jobs:
           else
             json=$(printf '%s\n' "${needs_build[@]}" | jq -R . | jq -cs .)
           fi
+
           echo "files=$json" >> $GITHUB_OUTPUT
 
   build-firmware:
@@ -205,26 +194,19 @@ jobs:
           base_gdo_repo_url="https://raw.githubusercontent.com/CircuitSetup/circuitsetup-esphome/${gdo_branch}"
           base_energy_meter_repo_url="https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/${energy_meter_branch}/Software/ESPHome"
           
+          source scripts/configs.sh
+          
+          base_gdo_repo_url="..."
+          base_energy_meter_repo_url="..."
+          
           declare -A config_urls
           
-          config_urls["circuitsetup-gdo-default.yaml"]="${base_gdo_repo_url}/circuitsetup-gdo-default.yaml"
-          config_urls["circuitsetup-gdo-dry-contact.yaml"]="${base_gdo_repo_url}/circuitsetup-gdo-dry-contact.yaml"
-          
-          config_urls["6chan_energy_meter_main_board.yaml"]="${base_energy_meter_repo_url}/6chan_energy_meter_main_board.yaml"
-          config_urls["6chan_energy_meter_1-addon.yaml"]="${base_energy_meter_repo_url}/6chan_energy_meter_1-addon.yaml"
-          config_urls["6chan_energy_meter_2-addons.yaml"]="${base_energy_meter_repo_url}/6chan_energy_meter_2-addons.yaml"
-          config_urls["6chan_energy_meter_3-addons.yaml"]="${base_energy_meter_repo_url}/6chan_energy_meter_3-addons.yaml"
-          config_urls["6chan_energy_meter_main_ethernet.yaml"]="${base_energy_meter_repo_url}/6chan_energy_meter_main_ethernet.yaml"
-          config_urls["6chan_energy_meter_1-addon_ethernet.yaml"]="${base_energy_meter_repo_url}/6chan_energy_meter_1-addon_ethernet.yaml"
-          config_urls["6chan_energy_meter_2-addons_ethernet.yaml"]="${base_energy_meter_repo_url}/6chan_energy_meter_2-addons_ethernet.yaml"
-          config_urls["6chan_energy_meter_3-addons_ethernet.yaml"]="${base_energy_meter_repo_url}/6chan_energy_meter_3-addons_ethernet.yaml"
-          
-          echo "Downloading ESPHome configs from branches: circuitsetup-esphome=$gdo_branch, energy_meter=$energy_meter_branch"
-          
-          for file in "${!config_urls[@]}"; do
-            url="${config_urls[$file]}"
-            echo "Downloading $file from $url"
-            curl -L -o "$file" "$url"
+          for config_file in "${CONFIG_LIST[@]}"; do
+            if [[ "$config_file" == circuitsetup-gdo-* ]]; then
+              config_urls["$config_file"]="${base_gdo_repo_url}/${config_file}"
+            else
+              config_urls["$config_file"]="${base_energy_meter_repo_url}/${config_file}"
+            fi
           done
 
       - name: Compile ESPHome
@@ -247,32 +229,18 @@ jobs:
         
       - name: Build Manifests
         run: |
+          source scripts/configs.sh
           version="${{ needs.determine-build.outputs.version }}"
           filename="${{ steps.firmware.outputs.filename }}"
           config_file="${{ matrix.files }}"
-      
-          manifest_entries=$(cat <<EOF
-            circuitsetup-gdo-default.yaml|CircuitSetup Security+ Garage Door Opener|ESP32_S3
-            circuitsetup-gdo-dry-contact.yaml|CircuitSetup Garage Door Opener Dry Contact|ESP32_S3
-            6chan_energy_meter_main_board.yaml|CircuitSetup 6 Channel Energy Meter Main|ESP32
-            6chan_energy_meter_1-addon.yaml|CircuitSetup 6 Channel Energy Meter Main + 1 Add-on|ESP32
-            6chan_energy_meter_2-addons.yaml|CircuitSetup 6 Channel Energy Meter Main + 2 Add-ons|ESP32
-            6chan_energy_meter_3-addons.yaml|CircuitSetup 6 Channel Energy Meter Main + 3 Add-ons|ESP32
-            6chan_energy_meter_main_ethernet.yaml|CircuitSetup 6 Channel Energy Meter Ethernet|ESP32_S3
-            6chan_energy_meter_1-addon_ethernet.yaml|CircuitSetup 6 Channel Energy Meter + 1 Add-on Ethernet|ESP32_S3
-            6chan_energy_meter_2-addons_ethernet.yaml|CircuitSetup 6 Channel Energy Meter + 2 Add-ons Ethernet|ESP32_S3
-            6chan_energy_meter_3-addons_ethernet.yaml|CircuitSetup 6 Channel Energy Meter + 3 Add-ons Ethernet|ESP32_S3
-            EOF
-          )
-      
-          matched_entry=""
-          while IFS="|" read -r yaml name mcu; do
-            if [[ "$yaml" == "$config_file" ]]; then
-              matched_entry="$name|$mcu"
-              manifest_name="manifest_${yaml%.yaml}-${version}.json"
-              break
-            fi
-          done <<< "$manifest_entries"
+           
+          matched_entry="${CONFIG_META[$config_file]}"
+          if [ -z "$matched_entry" ]; then
+            echo "No manifest mapping found for $config_file. Skipping."
+            exit 0
+          fi
+          
+          IFS="|" read -r name mcu <<< "$matched_entry"
       
           if [ -z "$matched_entry" ]; then
             echo "No manifest mapping found for $config_file. Skipping."
