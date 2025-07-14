@@ -88,6 +88,18 @@
       <select id="version-select" disabled>
         <option value="">Select product first</option>
       </select>
+      <p>
+        To flash your ESP32 you will likely need to hole down the right (IO0) button before clicking on "Install"
+      </p>
+      <p>
+        To flash your GDO:
+        <ol>
+          <li>Hold down the <b>“Reset”</b> (left) button on the GDO</li>
+          <li>Click <b>“Install”</b></li>
+          <li>Hold down the <b>“BOOT”</b> button while still holding the <b>“Reset”</b> button</li>
+          <li>Release the <b>“Reset”</b> button</li>
+          <li>Release the <b>“BOOT”</b> button</li>
+        </ol>
       <p class="button-row" align="center">
         <esp-web-install-button class="invisible"></esp-web-install-button>
       </p>
