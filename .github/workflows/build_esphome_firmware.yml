@@ -251,36 +251,45 @@ jobs:
           filename="${{ steps.firmware.outputs.filename }}"
           config_file="${{ matrix.files }}"
       
-          declare -A manifests
+          manifest_entries=$(cat <<EOF
+            circuitsetup-gdo-default.yaml|CircuitSetup Security+ Garage Door Opener|ESP32_S3
+            circuitsetup-gdo-dry-contact.yaml|CircuitSetup Garage Door Opener Dry Contact|ESP32_S3
+            6chan_energy_meter_main_board.yaml|CircuitSetup 6 Channel Energy Meter Main|ESP32
+            6chan_energy_meter_1-addon.yaml|CircuitSetup 6 Channel Energy Meter Main + 1 Add-on|ESP32
+            6chan_energy_meter_2-addons.yaml|CircuitSetup 6 Channel Energy Meter Main + 2 Add-ons|ESP32
+            6chan_energy_meter_3-addons.yaml|CircuitSetup 6 Channel Energy Meter Main + 3 Add-ons|ESP32
+            6chan_energy_meter_main_ethernet.yaml|CircuitSetup 6 Channel Energy Meter Ethernet|ESP32_S3
+            6chan_energy_meter_1-addon_ethernet.yaml|CircuitSetup 6 Channel Energy Meter + 1 Add-on Ethernet|ESP32_S3
+            6chan_energy_meter_2-addons_ethernet.yaml|CircuitSetup 6 Channel Energy Meter + 2 Add-ons Ethernet|ESP32_S3
+            6chan_energy_meter_3-addons_ethernet.yaml|CircuitSetup 6 Channel Energy Meter + 3 Add-ons Ethernet|ESP32_S3
+            EOF
+          )
       
-          # GDO
-          manifests["circuitsetup-gdo-default.yaml"]="CircuitSetup Security+ Garage Door Opener|manifest_secplus_gdo.json|ESP32_S3"
-          manifests["circuitsetup-gdo-dry-contact.yaml"]="CircuitSetup Garage Door Opener Dry Contact|manifest_gdo_dry_contact.json|ESP32_S3"
+          mkdir -p manifests
       
-          # 6 Channel Meter
-          manifests["6chan_energy_meter_main_board.yaml"]="CircuitSetup 6 Channel Energy Meter Main|manifest_6_channel_meter.json|ESP32"
-          manifests["6chan_energy_meter_1-addon.yaml"]="CircuitSetup 6 Channel Energy Meter Main + 1 Add-on|manifest_6_channel_meter_1-addon.json|ESP32"
-          manifests["6chan_energy_meter_2-addons.yaml"]="CircuitSetup 6 Channel Energy Meter Main + 2 Add-ons|manifest_6_channel_meter_2-addons.json|ESP32"
-          manifests["6chan_energy_meter_3-addons.yaml"]="CircuitSetup 6 Channel Energy Meter Main + 3 Add-ons|manifest_6_channel_meter_3-addons.json|ESP32"
+          matched_entry=""
+          while IFS="|" read -r yaml name mcu; do
+            if [[ "$yaml" == "$config_file" ]]; then
+              matched_entry="$name|$mcu"
+              manifest_name="manifest_${yaml%.yaml}-${version}.json"
+              break
+            fi
+          done <<< "$manifest_entries"
       
-          # 6 Channel Meter Ethernet
-          manifests["6chan_energy_meter_main_ethernet.yaml"]="CircuitSetup 6 Channel Energy Meter Ethernet|manifest_6_channel_meter_ethernet.json|ESP32_S3"
-          manifests["6chan_energy_meter_1-addon_ethernet.yaml"]="CircuitSetup 6 Channel Energy Meter + 1 Add-on Ethernet|manifest_6_channel_meter_1-addon_ethernet.json|ESP32_S3"
-          manifests["6chan_energy_meter_2-addons_ethernet.yaml"]="CircuitSetup 6 Channel Energy Meter + 2 Add-ons Ethernet|manifest_6_channel_meter_2-addons_ethernet.json|ESP32_S3"
-          manifests["6chan_energy_meter_3-addons_ethernet.yaml"]="CircuitSetup 6 Channel Energy Meter + 3 Add-ons Ethernet|manifest_6_channel_meter_3-addons_ethernet.json|ESP32_S3"
-      
-          if [ -z "${manifests[$config_file]}" ]; then
+          if [ -z "$matched_entry" ]; then
             echo "No manifest mapping found for $config_file. Skipping."
             exit 0
           fi
       
-          IFS="|" read -r MANIFEST_NAME MANIFEST_FNAME MCU <<< "${manifests[$config_file]}"
+          IFS="|" read -r name mcu <<< "$matched_entry"
       
-          echo "Building manifest for: $MANIFEST_NAME ($MANIFEST_FNAME)"
+          echo "Building manifest for: $name ($manifest_name)"
       
-          export MANIFEST_NAME MANIFEST_FNAME MANIFEST_VERSION="$version"
+          export MANIFEST_NAME="$name"
+          export MANIFEST_FNAME="$manifest_name"
+          export MANIFEST_VERSION="$version"
       
-          if [[ "$MCU" == "ESP32_S3" ]]; then
+          if [[ "$mcu" == "ESP32_S3" ]]; then
             export ESP32_S3_IMAGE_URI="https://circuitsetup.github.io/ESPWebInstaller/firmware/$filename"
           else
             export ESP32_IMAGE_URI="https://circuitsetup.github.io/ESPWebInstaller/firmware/$filename"
@@ -329,61 +338,50 @@ jobs:
         run: |
           mkdir -p manifests
           echo "[" > manifests/firmware_index.json
-  
+      
           first=true
-  
+      
           for manifest in manifests_combined/manifest_*.json; do
             manifest_file=$(basename "$manifest")
-  
-            # Mapping from manifest filename to firmware filename prefix
-            declare -A manifest_to_prefix=(
-              ["manifest_6_channel_meter.json"]="6chan_energy_meter_main_board"
-              ["manifest_6_channel_meter_1-addon.json"]="6chan_energy_meter_1-addon"
-              ["manifest_6_channel_meter_2-addons.json"]="6chan_energy_meter_2-addons"
-              ["manifest_6_channel_meter_3-addons.json"]="6chan_energy_meter_3-addons"
-              ["manifest_6_channel_meter_ethernet.json"]="6chan_energy_meter_main_ethernet"
-              ["manifest_6_channel_meter_1-addon_ethernet.json"]="6chan_energy_meter_1-addon_ethernet"
-              ["manifest_6_channel_meter_2-addons_ethernet.json"]="6chan_energy_meter_2-addons_ethernet"
-              ["manifest_6_channel_meter_3-addons_ethernet.json"]="6chan_energy_meter_3-addons_ethernet"
-              ["manifest_secplus_gdo.json"]="circuitsetup-gdo-default"
-              ["manifest_gdo_dry_contact.json"]="circuitsetup-gdo-dry-contact"
-            )
-  
-            productId="${manifest_to_prefix[$manifest_file]}"
-            if [ -z "$productId" ]; then
-              echo "Skipping manifest $manifest_file — no firmware prefix mapping found"
+      
+            # Extract productId from filename like:
+            # manifest_6chan_energy_meter_main_board-2025.7.11.json → 6chan_energy_meter_main_board
+            if [[ "$manifest_file" =~ ^manifest_(.+)-[0-9.]+\.json$ ]]; then
+              productId="${BASH_REMATCH[1]}"
+            else
+              echo "Skipping $manifest_file — invalid filename pattern"
               continue
             fi
-  
+      
             name=$(jq -r '.name' "$manifest")
             if [ "$name" = "null" ]; then
-              echo "Skipping manifest $manifest_file — missing .name field"
+              echo "Skipping $manifest_file — missing .name field"
               continue
             fi
-  
+      
             files=$(find firmware -type f -name "${productId}-*.bin" | sort -r | head -n 5)
             if [ -z "$files" ]; then
               echo "No firmware files found for $productId"
               continue
             fi
-  
+      
             if [ "$first" = true ]; then
               first=false
             else
               echo "," >> manifests/firmware_index.json
             fi
-  
+      
             echo "  {" >> manifests/firmware_index.json
             echo "    \"productId\": \"${productId}\"," >> manifests/firmware_index.json
             echo "    \"name\": \"${name}\"," >> manifests/firmware_index.json
             echo "    \"versions\": [" >> manifests/firmware_index.json
-  
+      
             vfirst=true
             for f in $files; do
               fname=$(basename "$f")
               version=${fname#${productId}-}
               version=${version%.bin}
-  
+      
               if [ "$vfirst" = true ]; then
                 vfirst=false
               else
@@ -391,11 +389,11 @@ jobs:
               fi
               echo "      { \"version\": \"${version}\", \"file\": \"$f\" }" >> manifests/firmware_index.json
             done
-  
+      
             echo "    ]" >> manifests/firmware_index.json
             echo "  }" >> manifests/firmware_index.json
           done
-  
+      
           echo "]" >> manifests/firmware_index.json
       
       - name: Clean up manifest subdirectories
