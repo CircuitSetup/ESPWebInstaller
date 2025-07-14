@@ -196,9 +196,6 @@ jobs:
           
           source scripts/configs.sh
           
-          base_gdo_repo_url="..."
-          base_energy_meter_repo_url="..."
-          
           declare -A config_urls
           
           for config_file in "${CONFIG_LIST[@]}"; do
@@ -241,14 +238,8 @@ jobs:
           fi
           
           IFS="|" read -r name mcu <<< "$matched_entry"
-      
-          if [ -z "$matched_entry" ]; then
-            echo "No manifest mapping found for $config_file. Skipping."
-            exit 0
-          fi
-      
-          IFS="|" read -r name mcu <<< "$matched_entry"
-      
+          manifest_name="manifest_$(basename "$config_file" .yaml)-${version}.json"    
+          
           echo "Building manifest for: $name ($manifest_name)"
       
           export MANIFEST_NAME="$name"
