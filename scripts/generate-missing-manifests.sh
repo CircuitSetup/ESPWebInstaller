@@ -18,9 +18,9 @@ declare -A name_map=(
 
 for bin_file in firmware/*.bin; do
   fname=$(basename "$bin_file")
-  product="${fname%-*}"
-  version="${fname#${product}-}"
-  version="${version%.bin}"
+  base="${fname%.bin}"
+  version="${base##*-}"
+  product="${base%-${version}}"
 
   manifest="manifests/manifest_${product}-${version}.json"
   if [[ -f "$manifest" ]]; then
