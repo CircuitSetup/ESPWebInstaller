@@ -16,66 +16,98 @@
   }
 ,
   {
-    "productId": "6chan_energy_meter_1-addon",
-    "name": "CircuitSetup 6 Channel Energy Meter Main + 1 Add-on",
+    "productId": "6chan_energy_meter_main_board",
+    "name": "CircuitSetup 6 Channel Energy Meter Main",
     "versions": [
-      { "version": "2025.8.0-dev", "file": "firmware/6chan_energy_meter_1-addon-2025.8.0-dev.bin" }
+      { "version": "2025.8.0-dev", "file": "firmware/6chan_energy_meter_main_board-2025.8.0-dev.bin" }
 ,
-      { "version": "2025.6.3", "file": "firmware/6chan_energy_meter_1-addon-2025.6.3.bin" }
+      { "version": "2025.6.3", "file": "firmware/6chan_energy_meter_main_board-2025.6.3.bin" }
 ,
-      { "version": "2025.6.2", "file": "firmware/6chan_energy_meter_1-addon-2025.6.2.bin" }
+      { "version": "2025.6.2", "file": "firmware/6chan_energy_meter_main_board-2025.6.2.bin" }
+,
+      { "version": "2025.6.1", "file": "firmware/6chan_energy_meter_main_board-2025.6.1.bin" }
+,
+      { "version": "2025.6.0", "file": "firmware/6chan_energy_meter_main_board-2025.6.0.bin" }
     ]
   }
 ,
   {
-    "productId": "6chan_energy_meter_1-addon_ethernet",
-    "name": "CircuitSetup 6 Channel Energy Meter + 1 Add-on Ethernet",
+    "productId": "6chan_energy_meter_main_board",
+    "name": "CircuitSetup 6 Channel Energy Meter Main",
     "versions": [
-      { "version": "2025.8.0-dev", "file": "firmware/6chan_energy_meter_1-addon_ethernet-2025.8.0-dev.bin" }
+      { "version": "2025.8.0-dev", "file": "firmware/6chan_energy_meter_main_board-2025.8.0-dev.bin" }
 ,
-      { "version": "2025.6.3", "file": "firmware/6chan_energy_meter_1-addon_ethernet-2025.6.3.bin" }
+      { "version": "2025.6.3", "file": "firmware/6chan_energy_meter_main_board-2025.6.3.bin" }
 ,
-      { "version": "2025.6.2", "file": "firmware/6chan_energy_meter_1-addon_ethernet-2025.6.2.bin" }
+      { "version": "2025.6.2", "file": "firmware/6chan_energy_meter_main_board-2025.6.2.bin" }
+,
+      { "version": "2025.6.1", "file": "firmware/6chan_energy_meter_main_board-2025.6.1.bin" }
+,
+      { "version": "2025.6.0", "file": "firmware/6chan_energy_meter_main_board-2025.6.0.bin" }
     ]
   }
 ,
   {
-    "productId": "6chan_energy_meter_2-addons",
-    "name": "CircuitSetup 6 Channel Energy Meter Main + 2 Add-ons",
+    "productId": "6chan_energy_meter_main_board",
+    "name": "CircuitSetup 6 Channel Energy Meter Main",
     "versions": [
-      { "version": "2025.8.0-dev", "file": "firmware/6chan_energy_meter_2-addons-2025.8.0-dev.bin" }
+      { "version": "2025.8.0-dev", "file": "firmware/6chan_energy_meter_main_board-2025.8.0-dev.bin" }
 ,
-      { "version": "2025.6.3", "file": "firmware/6chan_energy_meter_2-addons-2025.6.3.bin" }
+      { "version": "2025.6.3", "file": "firmware/6chan_energy_meter_main_board-2025.6.3.bin" }
 ,
-      { "version": "2025.6.2", "file": "firmware/6chan_energy_meter_2-addons-2025.6.2.bin" }
+      { "version": "2025.6.2", "file": "firmware/6chan_energy_meter_main_board-2025.6.2.bin" }
+,
+      { "version": "2025.6.1", "file": "firmware/6chan_energy_meter_main_board-2025.6.1.bin" }
+,
+      { "version": "2025.6.0", "file": "firmware/6chan_energy_meter_main_board-2025.6.0.bin" }
     ]
   }
 ,
   {
-    "productId": "6chan_energy_meter_2-addons_ethernet",
-    "name": "CircuitSetup 6 Channel Energy Meter + 2 Add-ons Ethernet",
+    "productId": "6chan_energy_meter_main_board",
+    "name": "CircuitSetup 6 Channel Energy Meter Main",
     "versions": [
-      { "version": "2025.8.0-dev", "file": "firmware/6chan_energy_meter_2-addons_ethernet-2025.8.0-dev.bin" }
+      { "version": "2025.8.0-dev", "file": "firmware/6chan_energy_meter_main_board-2025.8.0-dev.bin" }
 ,
-      { "version": "2025.6.3", "file": "firmware/6chan_energy_meter_2-addons_ethernet-2025.6.3.bin" }
+      { "version": "2025.6.3", "file": "firmware/6chan_energy_meter_main_board-2025.6.3.bin" }
 ,
-      { "version": "2025.6.2", "file": "firmware/6chan_energy_meter_2-addons_ethernet-2025.6.2.bin" }
+      { "version": "2025.6.2", "file": "firmware/6chan_energy_meter_main_board-2025.6.2.bin" }
+,
+      { "version": "2025.6.1", "file": "firmware/6chan_energy_meter_main_board-2025.6.1.bin" }
+,
+      { "version": "2025.6.0", "file": "firmware/6chan_energy_meter_main_board-2025.6.0.bin" }
     ]
   }
 ,
   {
-    "productId": "6chan_energy_meter_3-addons",
-    "name": "CircuitSetup 6 Channel Energy Meter Main + 3 Add-ons",
+    "productId": "6chan_energy_meter_main_board",
+    "name": "CircuitSetup 6 Channel Energy Meter Main",
     "versions": [
-      { "version": "2025.8.0-dev", "file": "firmware/6chan_energy_meter_3-addons-2025.8.0-dev.bin" }
+      { "version": "2025.8.0-dev", "file": "firmware/6chan_energy_meter_main_board-2025.8.0-dev.bin" }
+,
+      { "version": "2025.6.3", "file": "firmware/6chan_energy_meter_main_board-2025.6.3.bin" }
+,
+      { "version": "2025.6.2", "file": "firmware/6chan_energy_meter_main_board-2025.6.2.bin" }
+,
+      { "version": "2025.6.1", "file": "firmware/6chan_energy_meter_main_board-2025.6.1.bin" }
+,
+      { "version": "2025.6.0", "file": "firmware/6chan_energy_meter_main_board-2025.6.0.bin" }
     ]
   }
 ,
   {
-    "productId": "6chan_energy_meter_3-addons_ethernet",
-    "name": "CircuitSetup 6 Channel Energy Meter + 3 Add-ons Ethernet",
+    "productId": "6chan_energy_meter_main_board",
+    "name": "CircuitSetup 6 Channel Energy Meter Main",
     "versions": [
-      { "version": "2025.8.0-dev", "file": "firmware/6chan_energy_meter_3-addons_ethernet-2025.8.0-dev.bin" }
+      { "version": "2025.8.0-dev", "file": "firmware/6chan_energy_meter_main_board-2025.8.0-dev.bin" }
+,
+      { "version": "2025.6.3", "file": "firmware/6chan_energy_meter_main_board-2025.6.3.bin" }
+,
+      { "version": "2025.6.2", "file": "firmware/6chan_energy_meter_main_board-2025.6.2.bin" }
+,
+      { "version": "2025.6.1", "file": "firmware/6chan_energy_meter_main_board-2025.6.1.bin" }
+,
+      { "version": "2025.6.0", "file": "firmware/6chan_energy_meter_main_board-2025.6.0.bin" }
     ]
   }
 ,
@@ -96,32 +128,98 @@
   }
 ,
   {
-    "productId": "circuitsetup-gdo-dry-contact",
-    "name": "CircuitSetup Garage Door Opener Dry Contact",
+    "productId": "6chan_energy_meter_main_ethernet",
+    "name": "CircuitSetup 6 Channel Energy Meter Ethernet",
     "versions": [
-      { "version": "2025.8.0-dev", "file": "firmware/circuitsetup-gdo-dry-contact-2025.8.0-dev.bin" }
+      { "version": "2025.8.0-dev", "file": "firmware/6chan_energy_meter_main_ethernet-2025.8.0-dev.bin" }
 ,
-      { "version": "2025.6.3", "file": "firmware/circuitsetup-gdo-dry-contact-2025.6.3.bin" }
+      { "version": "2025.6.3", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.3.bin" }
 ,
-      { "version": "2025.6.2", "file": "firmware/circuitsetup-gdo-dry-contact-2025.6.2.bin" }
+      { "version": "2025.6.2", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.2.bin" }
 ,
-      { "version": "2025.6.1", "file": "firmware/circuitsetup-gdo-dry-contact-2025.6.1.bin" }
+      { "version": "2025.6.1", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.1.bin" }
+,
+      { "version": "2025.6.0", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.0.bin" }
     ]
   }
 ,
   {
-    "productId": "circuitsetup-gdo-default",
-    "name": "CircuitSetup Security+ Garage Door Opener",
+    "productId": "6chan_energy_meter_main_ethernet",
+    "name": "CircuitSetup 6 Channel Energy Meter Ethernet",
     "versions": [
-      { "version": "2025.8.0-dev", "file": "firmware/circuitsetup-gdo-default-2025.8.0-dev.bin" }
+      { "version": "2025.8.0-dev", "file": "firmware/6chan_energy_meter_main_ethernet-2025.8.0-dev.bin" }
 ,
-      { "version": "2025.6.3", "file": "firmware/circuitsetup-gdo-default-2025.6.3.bin" }
+      { "version": "2025.6.3", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.3.bin" }
 ,
-      { "version": "2025.6.2", "file": "firmware/circuitsetup-gdo-default-2025.6.2.bin" }
+      { "version": "2025.6.2", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.2.bin" }
 ,
-      { "version": "2025.6.1", "file": "firmware/circuitsetup-gdo-default-2025.6.1.bin" }
+      { "version": "2025.6.1", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.1.bin" }
 ,
-      { "version": "2025.6.0", "file": "firmware/circuitsetup-gdo-default-2025.6.0.bin" }
+      { "version": "2025.6.0", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.0.bin" }
+    ]
+  }
+,
+  {
+    "productId": "6chan_energy_meter_main_ethernet",
+    "name": "CircuitSetup 6 Channel Energy Meter Ethernet",
+    "versions": [
+      { "version": "2025.8.0-dev", "file": "firmware/6chan_energy_meter_main_ethernet-2025.8.0-dev.bin" }
+,
+      { "version": "2025.6.3", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.3.bin" }
+,
+      { "version": "2025.6.2", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.2.bin" }
+,
+      { "version": "2025.6.1", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.1.bin" }
+,
+      { "version": "2025.6.0", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.0.bin" }
+    ]
+  }
+,
+  {
+    "productId": "6chan_energy_meter_main_ethernet",
+    "name": "CircuitSetup 6 Channel Energy Meter Ethernet",
+    "versions": [
+      { "version": "2025.8.0-dev", "file": "firmware/6chan_energy_meter_main_ethernet-2025.8.0-dev.bin" }
+,
+      { "version": "2025.6.3", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.3.bin" }
+,
+      { "version": "2025.6.2", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.2.bin" }
+,
+      { "version": "2025.6.1", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.1.bin" }
+,
+      { "version": "2025.6.0", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.0.bin" }
+    ]
+  }
+,
+  {
+    "productId": "6chan_energy_meter_main_ethernet",
+    "name": "CircuitSetup 6 Channel Energy Meter Ethernet",
+    "versions": [
+      { "version": "2025.8.0-dev", "file": "firmware/6chan_energy_meter_main_ethernet-2025.8.0-dev.bin" }
+,
+      { "version": "2025.6.3", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.3.bin" }
+,
+      { "version": "2025.6.2", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.2.bin" }
+,
+      { "version": "2025.6.1", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.1.bin" }
+,
+      { "version": "2025.6.0", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.0.bin" }
+    ]
+  }
+,
+  {
+    "productId": "6chan_energy_meter_main_ethernet",
+    "name": "CircuitSetup 6 Channel Energy Meter Ethernet",
+    "versions": [
+      { "version": "2025.8.0-dev", "file": "firmware/6chan_energy_meter_main_ethernet-2025.8.0-dev.bin" }
+,
+      { "version": "2025.6.3", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.3.bin" }
+,
+      { "version": "2025.6.2", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.2.bin" }
+,
+      { "version": "2025.6.1", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.1.bin" }
+,
+      { "version": "2025.6.0", "file": "firmware/6chan_energy_meter_main_ethernet-2025.6.0.bin" }
     ]
   }
 ]
