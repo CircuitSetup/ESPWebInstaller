@@ -21,7 +21,7 @@ for bin_file in firmware/*.bin; do
   base="${fname%.bin}"
   
   # Match product and version: 2025.8.0 or 2025.8.0-dev
-  if [[ "$base" =~ ^(.+)-([0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9]+)?)$ ]]; then
+  if [[ "$base" =~ ^(.+)-([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?)$ ]]; then
     product="${BASH_REMATCH[1]}"
     version="${BASH_REMATCH[2]}"
   else
