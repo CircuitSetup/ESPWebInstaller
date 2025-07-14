@@ -19,8 +19,15 @@ declare -A name_map=(
 for bin_file in firmware/*.bin; do
   fname=$(basename "$bin_file")
   base="${fname%.bin}"
-  version="${base##*-}"
-  product="${base%-${version}}"
+  
+  # Match product and version: 2025.8.0 or 2025.8.0-dev
+  if [[ "$base" =~ ^(.+)-([0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9]+)?)$ ]]; then
+    product="${BASH_REMATCH[1]}"
+    version="${BASH_REMATCH[2]}"
+  else
+    echo "Skipping invalid filename pattern: $fname"
+    continue
+  fi
 
   manifest="manifests/manifest_${product}-${version}.json"
   if [[ -f "$manifest" ]]; then
