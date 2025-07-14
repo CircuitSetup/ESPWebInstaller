@@ -266,6 +266,9 @@ jobs:
           pattern: manifests-*
           path: manifests
         continue-on-error: true  # fallback to checked-out version if not present
+
+      - name: Make generate-missing-manifests.sh executable
+        run: chmod +x scripts/generate-missing-manifests.sh
         
       - name: Generate missing manifests from existing firmware
         run: ./scripts/generate-missing-manifests.sh
