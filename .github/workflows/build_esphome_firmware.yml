@@ -290,17 +290,17 @@ jobs:
       - name: Generate firmware version index
         run: |
           mkdir -p manifests
-          echo "[" > manifests/firmware_index.json
       
-          first=true
+          declare -A product_names
+          declare -A product_versions
       
           for manifest in manifests_combined/manifest_*.json; do
             manifest_file=$(basename "$manifest")
       
-            # Extract productId from filename like:
-            # manifest_6chan_energy_meter_main_board-2025.7.11.json → 6chan_energy_meter_main_board
-            if [[ "$manifest_file" =~ ^manifest_(.+)-[0-9.]+\.json$ ]]; then
+            # Extract productId and version from manifest filename
+            if [[ "$manifest_file" =~ ^manifest_(.+)-([0-9.]+)\.json$ ]]; then
               productId="${BASH_REMATCH[1]}"
+              version="${BASH_REMATCH[2]}"
             else
               echo "Skipping $manifest_file — invalid filename pattern"
               continue
@@ -312,11 +312,16 @@ jobs:
               continue
             fi
       
-            files=$(find firmware -type f -name "${productId}-*.bin" | sort -r | head -n 5)
-            if [ -z "$files" ]; then
-              echo "No firmware files found for $productId"
-              continue
-            fi
+            product_names["$productId"]="$name"
+            product_versions["$productId"]+="$version "
+          done
+      
+          echo "[" > manifests/firmware_index.json
+          first=true
+      
+          for productId in "${!product_versions[@]}"; do
+            name="${product_names[$productId]}"
+            versions="${product_versions[$productId]}"
       
             if [ "$first" = true ]; then
               first=false
@@ -325,22 +330,18 @@ jobs:
             fi
       
             echo "  {" >> manifests/firmware_index.json
-            echo "    \"productId\": \"${productId}\"," >> manifests/firmware_index.json
-            echo "    \"name\": \"${name}\"," >> manifests/firmware_index.json
+            echo "    \"productId\": \"$productId\"," >> manifests/firmware_index.json
+            echo "    \"name\": \"$name\"," >> manifests/firmware_index.json
             echo "    \"versions\": [" >> manifests/firmware_index.json
       
             vfirst=true
-            for f in $files; do
-              fname=$(basename "$f")
-              version=${fname#${productId}-}
-              version=${version%.bin}
-      
+            for v in $versions; do
               if [ "$vfirst" = true ]; then
                 vfirst=false
               else
                 echo "," >> manifests/firmware_index.json
               fi
-              echo "      { \"version\": \"${version}\", \"file\": \"$f\" }" >> manifests/firmware_index.json
+              echo "      { \"version\": \"$v\" }" >> manifests/firmware_index.json
             done
       
             echo "    ]" >> manifests/firmware_index.json
