@@ -10,6 +10,22 @@
   }
 ,
   {
+    "productId": "6chan_energy_meter_4-addons",
+    "name": "CircuitSetup 6 Channel Energy Meter Main + 4 Add-ons",
+    "versions": [
+      { "version": "2025.7.0" }
+    ]
+  }
+,
+  {
+    "productId": "6chan_energy_meter_5-addons",
+    "name": "CircuitSetup 6 Channel Energy Meter Main + 5 Add-ons",
+    "versions": [
+      { "version": "2025.7.0" }
+    ]
+  }
+,
+  {
     "productId": "6chan_energy_meter_2-addons_ethernet",
     "name": "CircuitSetup 6 Channel Energy Meter + 2 Add-ons Ethernet",
     "versions": [
@@ -44,6 +60,14 @@
       { "version": "2025.7.0" }
 ,
       { "version": "2025.8.0-dev" }
+    ]
+  }
+,
+  {
+    "productId": "6chan_energy_meter_5-addons_ethernet",
+    "name": "CircuitSetup 6 Channel Energy Meter + 5 Add-ons Ethernet",
+    "versions": [
+      { "version": "2025.7.0" }
     ]
   }
 ,
@@ -136,6 +160,30 @@
       { "version": "2025.7.0" }
 ,
       { "version": "2025.8.0-dev" }
+    ]
+  }
+,
+  {
+    "productId": "6chan_energy_meter_6-addons_ethernet",
+    "name": "CircuitSetup 6 Channel Energy Meter + 6 Add-ons Ethernet",
+    "versions": [
+      { "version": "2025.7.0" }
+    ]
+  }
+,
+  {
+    "productId": "6chan_energy_meter_4-addons_ethernet",
+    "name": "CircuitSetup 6 Channel Energy Meter + 4 Add-ons Ethernet",
+    "versions": [
+      { "version": "2025.7.0" }
+    ]
+  }
+,
+  {
+    "productId": "6chan_energy_meter_6-addons",
+    "name": "CircuitSetup 6 Channel Energy Meter Main + 6 Add-ons",
+    "versions": [
+      { "version": "2025.7.0" }
     ]
   }
 ,
