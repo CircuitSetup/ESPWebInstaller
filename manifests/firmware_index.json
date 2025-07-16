@@ -3,6 +3,8 @@
     "productId": "6chan_energy_meter_3-addons",
     "name": "CircuitSetup 6 Channel Energy Meter Main + 3 Add-ons",
     "versions": [
+      { "version": "2025.7.0" }
+,
       { "version": "2025.8.0-dev" }
     ]
   }
@@ -14,6 +16,8 @@
       { "version": "2025.6.2" }
 ,
       { "version": "2025.6.3" }
+,
+      { "version": "2025.7.0" }
 ,
       { "version": "2025.8.0-dev" }
     ]
@@ -27,6 +31,8 @@
 ,
       { "version": "2025.6.3" }
 ,
+      { "version": "2025.7.0" }
+,
       { "version": "2025.8.0-dev" }
     ]
   }
@@ -35,6 +41,8 @@
     "productId": "6chan_energy_meter_3-addons_ethernet",
     "name": "CircuitSetup 6 Channel Energy Meter + 3 Add-ons Ethernet",
     "versions": [
+      { "version": "2025.7.0" }
+,
       { "version": "2025.8.0-dev" }
     ]
   }
@@ -46,6 +54,8 @@
       { "version": "2025.6.2" }
 ,
       { "version": "2025.6.3" }
+,
+      { "version": "2025.7.0" }
 ,
       { "version": "2025.8.0-dev" }
     ]
@@ -69,6 +79,8 @@
 ,
       { "version": "2025.6.3" }
 ,
+      { "version": "2025.7.0" }
+,
       { "version": "2025.8.0-dev" }
     ]
   }
@@ -80,6 +92,8 @@
       { "version": "2025.6.2" }
 ,
       { "version": "2025.6.3" }
+,
+      { "version": "2025.7.0" }
 ,
       { "version": "2025.8.0-dev" }
     ]
@@ -103,6 +117,8 @@
 ,
       { "version": "2025.6.3" }
 ,
+      { "version": "2025.7.0" }
+,
       { "version": "2025.8.0-dev" }
     ]
   }
@@ -116,6 +132,8 @@
       { "version": "2025.6.2" }
 ,
       { "version": "2025.6.3" }
+,
+      { "version": "2025.7.0" }
 ,
       { "version": "2025.8.0-dev" }
     ]
@@ -138,6 +156,8 @@
       { "version": "2025.6.2" }
 ,
       { "version": "2025.6.3" }
+,
+      { "version": "2025.7.0" }
 ,
       { "version": "2025.8.0-dev" }
     ]
