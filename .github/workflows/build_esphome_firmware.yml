@@ -249,11 +249,18 @@ jobs:
         with:
           name: manifests-${{ matrix.files }}
           path: manifests
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: firmware-${{ matrix.files }}
+          path: firmware
           
   generate-index:
     runs-on: ubuntu-latest
-    needs: [build-firmware, determine-build]  # optionally depends on these
+    needs: [build-firmware, determine-build]
     if: github.event.inputs.generate_json_only == 'true' || needs.determine-build.outputs.files != '[]'
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4.2.2
@@ -264,40 +271,57 @@ jobs:
         uses: actions/download-artifact@v4.3.0
         with:
           pattern: manifests-*
-          path: manifests
-        continue-on-error: true  # fallback to checked-out version if not present
+          path: artifact_manifests
+        continue-on-error: true
+
+      - name: Download firmware from build-firmware
+        uses: actions/download-artifact@v4.3.0
+        with:
+          pattern: firmware-*
+          path: firmware
+        continue-on-error: true
+
+      - name: Verify firmware files exist before manifest generation
+        run: |
+          echo "Listing contents of firmware/"
+          ls -l firmware
 
       - name: Make generate-missing-manifests.sh executable
         run: chmod +x scripts/generate-missing-manifests.sh
-        
+
       - name: Generate missing manifests from existing firmware
         run: ./scripts/generate-missing-manifests.sh
-      
+
       - name: Merge manifests (downloaded + committed)
         run: |
           mkdir -p manifests_combined
-  
+
           # Copy committed manifests
           if compgen -G "manifests/manifest_*.json" > /dev/null; then
             cp -v manifests/manifest_*.json manifests_combined/
           fi
-  
-          # Copy downloaded artifacts (if any)
+
+          # Copy downloaded artifacts
           if compgen -G "artifact_manifests/**/manifest_*.json" > /dev/null; then
-            find artifact_manifests -type f -name "manifest_*.json" -exec cp -vn {} manifests_combined/ \;
+            find artifact_manifests -type f -name "manifest_*.json" -exec cp -v {} manifests_combined/ \;
+          else
+            echo "⚠️ No manifest artifacts found in artifact_manifests/"
           fi
-  
+
+          echo "✅ Combined manifests:"
+          ls -l manifests_combined
+
       - name: Generate firmware version index
         run: |
           mkdir -p manifests
-      
+
           declare -A product_names
           declare -A product_versions
-      
+
           for manifest in manifests_combined/manifest_*.json; do
             manifest_file=$(basename "$manifest")
-      
-            # Extract productId and version from manifest filename
+
+            # Extract productId and version
             if [[ "$manifest_file" =~ ^manifest_(.+)-([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?)\.json$ ]]; then
               productId="${BASH_REMATCH[1]}"
               version="${BASH_REMATCH[2]}"
@@ -305,35 +329,35 @@ jobs:
               echo "Skipping $manifest_file — invalid filename pattern"
               continue
             fi
-      
+
             name=$(jq -r '.name' "$manifest")
             if [ "$name" = "null" ]; then
               echo "Skipping $manifest_file — missing .name field"
               continue
             fi
-      
+
             product_names["$productId"]="$name"
             product_versions["$productId"]+="$version "
           done
-      
+
           echo "[" > manifests/firmware_index.json
           first=true
-      
+
           for productId in "${!product_versions[@]}"; do
             name="${product_names[$productId]}"
             versions="${product_versions[$productId]}"
-      
+
             if [ "$first" = true ]; then
               first=false
             else
               echo "," >> manifests/firmware_index.json
             fi
-      
+
             echo "  {" >> manifests/firmware_index.json
             echo "    \"productId\": \"$productId\"," >> manifests/firmware_index.json
             echo "    \"name\": \"$name\"," >> manifests/firmware_index.json
             echo "    \"versions\": [" >> manifests/firmware_index.json
-      
+
             vfirst=true
             for v in $versions; do
               if [ "$vfirst" = true ]; then
@@ -343,16 +367,29 @@ jobs:
               fi
               echo "      { \"version\": \"$v\" }" >> manifests/firmware_index.json
             done
-      
+
             echo "    ]" >> manifests/firmware_index.json
             echo "  }" >> manifests/firmware_index.json
           done
-      
+
           echo "]" >> manifests/firmware_index.json
-      
+
       - name: Clean up manifest subdirectories
         run: |
           find manifests -mindepth 1 -type d -exec rm -rf {} +
+
+      - name: Copy manifests for commit
+        run: |
+          mkdir -p manifests
+          cp -v manifests_combined/manifest_*.json manifests/ || echo "No new manifests to copy."
+
+      - name: Check firmware files before commit
+        run: |
+          if compgen -G "firmware/*.bin" > /dev/null; then
+            echo "✅ Firmware files found in firmware/"
+          else
+            echo "⚠️ No firmware files found in firmware/. They may not have been built or persisted."
+          fi
 
       - name: Commit firmware and manifests to repo
         run: |
@@ -361,15 +398,20 @@ jobs:
           git config pull.rebase false
           git add firmware
           git add manifests
-          git commit -m "Add compiled firmware and updated manifests" || echo "No changes to commit."
-  
+
+          if git diff --cached --quiet; then
+            echo "⚠️ No changes to commit."
+          else
+            git commit -m "Add compiled firmware and updated manifests"
+          fi
+
           attempts=0
           max_attempts=5
-  
+
           until git pull origin main --no-edit && git push origin HEAD:main; do
             attempts=$((attempts+1))
             if [ $attempts -ge $max_attempts ]; then
-              echo "Max push attempts reached, exiting with failure."
+              echo "❌ Max push attempts reached, exiting with failure."
               exit 1
             fi
             echo "Push failed due to remote changes, retrying in 10 seconds... (attempt $attempts of $max_attempts)"
