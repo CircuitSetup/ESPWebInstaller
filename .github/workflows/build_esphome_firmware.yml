@@ -248,21 +248,33 @@ jobs:
           git config --global user.email "github-actions@github.com"
           git fetch origin main
           git checkout main
-          git pull origin main
-
+      
           git add firmware
           git add manifests
-
+      
           if git diff --cached --quiet; then
             echo "⚠️ No changes to commit."
-          else
-            git commit -m "Add firmware and manifest for ${{ matrix.files }}"
-            git push origin HEAD:main
+            exit 0
           fi
+      
+          git commit -m "Add firmware and manifest for ${{ matrix.files }}"
+      
+          attempts=0
+          max_attempts=5
+      
+          until git pull --rebase origin main && git push origin HEAD:main; do
+            attempts=$((attempts+1))
+            if [ $attempts -ge $max_attempts ]; then
+              echo "❌ Max push attempts reached, exiting with failure."
+              exit 1
+            fi
+            echo "⚠️ Push failed due to remote update. Retrying in 10 seconds... (attempt $attempts of $max_attempts)"
+            sleep 10
+          done
 
   generate-index:
     runs-on: ubuntu-latest
-    needs: [determine-build]
+    needs: [determine-build, build-firmware]
     if: github.event.inputs.generate_json_only == 'true' || needs.determine-build.outputs.files != '[]'
 
     steps:
