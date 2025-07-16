@@ -362,3 +362,4 @@ jobs:
           else
             git commit -m "Update firmware index"
             git push origin HEAD:main
+          fi
