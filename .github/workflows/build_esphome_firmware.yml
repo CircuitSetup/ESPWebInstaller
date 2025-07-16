@@ -118,6 +118,10 @@ jobs:
     runs-on: ubuntu-latest
     if: needs.determine-build.outputs.files != '[]' && github.event.inputs.generate_json_only != 'true'
 
+    concurrency:
+      group: build-firmware-${{ matrix.files }}
+      cancel-in-progress: false
+
     strategy:
       matrix:
         files: ${{ fromJson(needs.determine-build.outputs.files) }}
@@ -169,11 +173,11 @@ jobs:
               echo "false"
             fi
           }
-      
+
           if [ "${{ github.event.inputs.esphome_dev }}" == "true" ]; then
             gdo_branch="dev"
             energy_meter_branch="dev"
-      
+
             if [ "$(check_branch_exists CircuitSetup/circuitsetup-esphome dev)" != "true" ]; then
               gdo_branch="master"
             fi
@@ -184,17 +188,15 @@ jobs:
             gdo_branch="master"
             energy_meter_branch="master"
           fi
-      
-          # Decide repo based on config name
+
           if [[ "$config_file" == circuitsetup-gdo-* ]]; then
             url="https://raw.githubusercontent.com/CircuitSetup/circuitsetup-esphome/${gdo_branch}/${config_file}"
           else
             url="https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/${energy_meter_branch}/Software/ESPHome/${config_file}"
           fi
-      
+
           echo "Downloading $config_file from $url"
           curl -fSL "$url" -o "$config_file"
-
 
       - name: Compile ESPHome
         run: esphome -v compile "${{ matrix.files }}"
@@ -202,7 +204,7 @@ jobs:
       - name: Create firmware directory
         run: mkdir -p firmware
 
-      - name: Move the single combined file
+      - name: Move compiled binary
         id: firmware
         run: |
           version="${{ needs.determine-build.outputs.version }}"
@@ -211,54 +213,56 @@ jobs:
             mv {} "firmware/${filename}" \;
           echo "filename=$filename" >> $GITHUB_OUTPUT
 
-      - name: Create a manifests directory
-        run: mkdir -p manifests
-        
-      - name: Build Manifests
+      - name: Build Manifest
         run: |
           source scripts/configs.sh
           version="${{ needs.determine-build.outputs.version }}"
           filename="${{ steps.firmware.outputs.filename }}"
           config_file="${{ matrix.files }}"
-           
+
           matched_entry="${CONFIG_META[$config_file]}"
           if [ -z "$matched_entry" ]; then
             echo "No manifest mapping found for $config_file. Skipping."
             exit 0
           fi
-          
+
           IFS="|" read -r name mcu <<< "$matched_entry"
-          manifest_name="manifest_$(basename "$config_file" .yaml)-${version}.json"    
-          
-          echo "Building manifest for: $name ($manifest_name)"
-      
+          manifest_name="manifest_$(basename "$config_file" .yaml)-${version}.json"
+
           export MANIFEST_NAME="$name"
           export MANIFEST_FNAME="$manifest_name"
           export MANIFEST_VERSION="$version"
-      
+
           if [[ "$mcu" == "ESP32_S3" ]]; then
             export ESP32_S3_IMAGE_URI="https://circuitsetup.github.io/ESPWebInstaller/firmware/$filename"
           else
             export ESP32_IMAGE_URI="https://circuitsetup.github.io/ESPWebInstaller/firmware/$filename"
           fi
-      
-          ruby ./scripts/update-espwebtools-manifests.rb
-          
-      - name: Upload manifests
-        uses: actions/upload-artifact@v4.6.2
-        with:
-          name: manifests-${{ matrix.files }}
-          path: manifests
 
-      - name: Upload firmware
-        uses: actions/upload-artifact@v4.6.2
-        with:
-          name: firmware-${{ matrix.files }}
-          path: firmware
-          
+          mkdir -p manifests
+          ruby ./scripts/update-espwebtools-manifests.rb
+
+      - name: Commit firmware and manifest to repo
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions@github.com"
+          git fetch origin main
+          git checkout main
+          git pull origin main
+
+          git add firmware
+          git add manifests
+
+          if git diff --cached --quiet; then
+            echo "⚠️ No changes to commit."
+          else
+            git commit -m "Add firmware and manifest for ${{ matrix.files }}"
+            git push origin HEAD:main
+          fi
+
   generate-index:
     runs-on: ubuntu-latest
-    needs: [build-firmware, determine-build]
+    needs: [determine-build]
     if: github.event.inputs.generate_json_only == 'true' || needs.determine-build.outputs.files != '[]'
 
     steps:
@@ -267,61 +271,21 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download manifests from build-firmware (if any)
-        uses: actions/download-artifact@v4.3.0
-        with:
-          pattern: manifests-*
-          path: artifact_manifests
-        continue-on-error: true
-
-      - name: Download firmware from build-firmware
-        uses: actions/download-artifact@v4.3.0
-        with:
-          pattern: firmware-*
-          path: firmware
-        continue-on-error: true
-
-      - name: Verify firmware files exist before manifest generation
-        run: |
-          echo "Listing contents of firmware/"
-          ls -l firmware
-
       - name: Make generate-missing-manifests.sh executable
         run: chmod +x scripts/generate-missing-manifests.sh
 
-      - name: Generate missing manifests from existing firmware
+      - name: Generate any missing manifests
         run: ./scripts/generate-missing-manifests.sh
 
-      - name: Merge manifests (downloaded + committed)
-        run: |
-          mkdir -p manifests_combined
-
-          # Copy committed manifests
-          if compgen -G "manifests/manifest_*.json" > /dev/null; then
-            cp -v manifests/manifest_*.json manifests_combined/
-          fi
-
-          # Copy downloaded artifacts
-          if compgen -G "artifact_manifests/**/manifest_*.json" > /dev/null; then
-            find artifact_manifests -type f -name "manifest_*.json" -exec cp -v {} manifests_combined/ \;
-          else
-            echo "⚠️ No manifest artifacts found in artifact_manifests/"
-          fi
-
-          echo "✅ Combined manifests:"
-          ls -l manifests_combined
-
-      - name: Generate firmware version index
+      - name: Generate firmware index
         run: |
           mkdir -p manifests
 
           declare -A product_names
           declare -A product_versions
 
-          for manifest in manifests_combined/manifest_*.json; do
+          for manifest in manifests/manifest_*.json; do
             manifest_file=$(basename "$manifest")
-
-            # Extract productId and version
             if [[ "$manifest_file" =~ ^manifest_(.+)-([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?)\.json$ ]]; then
               productId="${BASH_REMATCH[1]}"
               version="${BASH_REMATCH[2]}"
@@ -374,46 +338,15 @@ jobs:
 
           echo "]" >> manifests/firmware_index.json
 
-      - name: Clean up manifest subdirectories
-        run: |
-          find manifests -mindepth 1 -type d -exec rm -rf {} +
-
-      - name: Copy manifests for commit
-        run: |
-          mkdir -p manifests
-          cp -v manifests_combined/manifest_*.json manifests/ || echo "No new manifests to copy."
-
-      - name: Check firmware files before commit
-        run: |
-          if compgen -G "firmware/*.bin" > /dev/null; then
-            echo "✅ Firmware files found in firmware/"
-          else
-            echo "⚠️ No firmware files found in firmware/. They may not have been built or persisted."
-          fi
-
-      - name: Commit firmware and manifests to repo
+      - name: Commit firmware index to repo
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "github-actions@github.com"
-          git config pull.rebase false
-          git add firmware
-          git add manifests
+          git pull origin main
+          git add manifests/firmware_index.json
 
           if git diff --cached --quiet; then
             echo "⚠️ No changes to commit."
           else
-            git commit -m "Add compiled firmware and updated manifests"
-          fi
-
-          attempts=0
-          max_attempts=5
-
-          until git pull origin main --no-edit && git push origin HEAD:main; do
-            attempts=$((attempts+1))
-            if [ $attempts -ge $max_attempts ]; then
-              echo "❌ Max push attempts reached, exiting with failure."
-              exit 1
-            fi
-            echo "Push failed due to remote changes, retrying in 10 seconds... (attempt $attempts of $max_attempts)"
-            sleep 10
-          done
+            git commit -m "Update firmware index"
+            git push origin HEAD:main
