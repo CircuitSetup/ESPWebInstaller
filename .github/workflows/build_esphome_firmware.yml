@@ -322,6 +322,10 @@ jobs:
           for productId in "${!product_versions[@]}"; do
             name="${product_names[$productId]}"
             versions="${product_versions[$productId]}"
+            IFS=' ' read -r -a version_array <<< "$versions"
+            sorted_versions=$(printf "%s\n" "${version_array[@]}" | sort -Vr)
+            limited_versions=$(echo "$sorted_versions" | head -n 5)
+
 
             if [ "$first" = true ]; then
               first=false
@@ -335,14 +339,14 @@ jobs:
             echo "    \"versions\": [" >> manifests/firmware_index.json
 
             vfirst=true
-            for v in $versions; do
+            while IFS= read -r v; do
               if [ "$vfirst" = true ]; then
                 vfirst=false
               else
                 echo "," >> manifests/firmware_index.json
               fi
               echo "      { \"version\": \"$v\" }" >> manifests/firmware_index.json
-            done
+            done <<< "$limited_versions"
 
             echo "    ]" >> manifests/firmware_index.json
             echo "  }" >> manifests/firmware_index.json
