@@ -1,0 +1,1 @@
+{"name":"CircuitSetup Garage Door Opener Dry Contact","version":"2025.7.4","builds":[{"chipFamily":"ESP32-S3","parts":[{"path":"https://circuitsetup.github.io/ESPWebInstaller/firmware/circuitsetup-gdo-dry-contact-2025.7.4.bin","offset":0}]}]}
