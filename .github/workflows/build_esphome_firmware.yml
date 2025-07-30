@@ -51,14 +51,7 @@ jobs:
         uses: actions/setup-python@v5.6.0
         with:
           python-version: "3.11"
-
-      - name: Cache pip
-        uses: actions/cache@v4.2.3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          cache: 'pip'
 
       - name: Install ESPHome
         run: |
@@ -133,30 +126,6 @@ jobs:
           persist-credentials: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5.6.0
-        with:
-          python-version: "3.11"
-
-      - name: Cache pip
-        uses: actions/cache@v4.2.3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Install ESPHome
-        run: |
-          pip3 install wheel
-          if [ "${{ github.event.inputs.esphome_dev }}" == "true" ]; then
-            echo "Installing ESPHome dev..."
-            pip3 install git+https://github.com/esphome/esphome.git@dev
-          else
-            echo "Installing ESPHome..."
-            pip3 install esphome
-          fi
-
       - name: Download ESPHome Config File
         run: |
           source scripts/configs.sh
@@ -198,19 +167,21 @@ jobs:
           echo "Downloading $config_file from $url"
           curl -fSL "$url" -o "$config_file"
 
-      - name: Compile ESPHome
-        run: esphome -v compile "${{ matrix.files }}"
-
-      - name: Create firmware directory
-        run: mkdir -p firmware
+      - name: Build firmware
+        id: build
+        uses: esphome/build-action@v7
+        with:
+          yaml-file: ${{ matrix.files }}
+          version: ${{ github.event.inputs.esphome_dev == 'true' && 'dev' || needs.determine-build.outputs.version }}
 
       - name: Move compiled binary
         id: firmware
         run: |
           version="${{ needs.determine-build.outputs.version }}"
+          build_name="${{ steps.build.outputs.name }}"
           filename=$(basename "${{ matrix.files }}" .yaml)-${version}.bin
-          find .esphome/build -type f -name "firmware.factory.bin" -exec \
-            mv {} "firmware/${filename}" \;
+          mkdir -p firmware
+          mv "$build_name/$build_name.factory.bin" "firmware/${filename}"
           echo "filename=$filename" >> $GITHUB_OUTPUT
 
       - name: Build Manifest
