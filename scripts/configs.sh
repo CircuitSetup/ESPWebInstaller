@@ -16,6 +16,7 @@ CONFIG_META["6chan_energy_meter_5-addons.yaml"]="CircuitSetup 6 Channel Energy M
 CONFIG_META["6chan_energy_meter_6-addons.yaml"]="CircuitSetup 6 Channel Energy Meter Main + 6 Add-ons|ESP32"
 
 CONFIG_META["6chan_energy_meter_main_ethernet.yaml"]="CircuitSetup 6 Channel Energy Meter Ethernet|ESP32_S3"
+CONFIG_META["6chan_energy_meter_main_ethernet_ws.yaml"]="CircuitSetup 6 Channel Energy Meter Ethernet WS|ESP32_S3"
 CONFIG_META["6chan_energy_meter_1-addon_ethernet.yaml"]="CircuitSetup 6 Channel Energy Meter + 1 Add-on Ethernet|ESP32_S3"
 CONFIG_META["6chan_energy_meter_2-addons_ethernet.yaml"]="CircuitSetup 6 Channel Energy Meter + 2 Add-ons Ethernet|ESP32_S3"
 CONFIG_META["6chan_energy_meter_3-addons_ethernet.yaml"]="CircuitSetup 6 Channel Energy Meter + 3 Add-ons Ethernet|ESP32_S3"
