@@ -32,6 +32,14 @@
   }
 ,
   {
+    "productId": "6chan_energy_meter_main_ethernet_ws",
+    "name": "CircuitSetup 6 Channel Energy Meter Ethernet WS",
+    "versions": [
+      { "version": "2025.7.4" }
+    ]
+  }
+,
+  {
     "productId": "6chan_energy_meter_3-addons_2-voltages",
     "name": "CircuitSetup 6 Channel Energy Meter 3 Add-ons 2 Voltages",
     "versions": [
