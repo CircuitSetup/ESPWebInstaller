@@ -244,6 +244,53 @@ jobs:
             sleep 10
           done
 
+      - name: Check for new release
+        if: matrix.files == 'circuitsetup-gdo-default.yaml' || matrix.files == 'circuitsetup-gdo-dry-contact.yaml'
+        id: release
+        run: |
+          repo="CircuitSetup/circuitsetup-esphome"
+          esphome_version="${{ needs.determine-build.outputs.version }}"
+          config="${{ matrix.files }}"
+          if [ "$config" = "circuitsetup-gdo-default.yaml" ]; then
+            base="circuitsetup-secplus-garage-door-opener"
+            friendly="CircuitSetup Security+ Garage Door Opener"
+            version=$(curl -s "https://raw.githubusercontent.com/${repo}/master/${base}.yaml" \
+              | grep 'project_version:' \
+              | sed 's/.*"\([^\"]*\)".*/\1/')
+          else
+            base="circuitsetup-gdo-dry-contact"
+            friendly="CircuitSetup Garage Door Opener Dry Contact"
+            version=$(grep 'project_version:' "$config" | sed 's/.*"\([^\"]*\)".*/\1/')
+          fi
+          tag="${base}-v${version}-esphome-v${esphome_version}"
+          status=$(curl -s -o /dev/null -w "%{http_code}" "https://api.github.com/repos/${repo}/releases/tags/${tag}")
+          if [ "$status" = "200" ]; then
+            echo "Release $tag already exists. Skipping."
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "should_release=true" >> $GITHUB_OUTPUT
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+          echo "friendly=$friendly" >> $GITHUB_OUTPUT
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "esphome_version=$esphome_version" >> $GITHUB_OUTPUT
+
+      - name: Create release on circuitsetup-esphome
+        if: steps.release.outputs.should_release == 'true'
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        with:
+          repository: CircuitSetup/circuitsetup-esphome
+          tag_name: ${{ steps.release.outputs.tag }}
+          name: ${{ steps.release.outputs.friendly }} v${{ steps.release.outputs.version }} - ESPHome v${{ steps.release.outputs.esphome_version }}
+          body: Built with ESPHome ${{ steps.release.outputs.esphome_version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: firmware/${{ steps.firmware.outputs.filename }}
+          fail_on_unmatched_files: true
+
   generate-index:
     runs-on: ubuntu-latest
     needs: [determine-build, build-firmware]
