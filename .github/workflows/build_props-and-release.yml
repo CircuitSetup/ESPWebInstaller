@@ -53,7 +53,12 @@ jobs:
 
       - name: Clone Target Repo (if cache is empty)
         if: steps.cache-target-repo.outputs.cache-hit != 'true'
-        run: git clone https://github.com/${{ matrix.path }} target_repo
+        run: |
+          if [ -d target_repo ]; then
+            echo "Removing existing target_repo directory before cloning"
+            rm -rf target_repo
+          fi
+          git clone https://github.com/${{ matrix.path }} target_repo
 
       - name: Get Latest Release Tag
         id: latest_release
