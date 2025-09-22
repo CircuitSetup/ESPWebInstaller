@@ -192,6 +192,17 @@ jobs:
           active_version = None
           active_note_index = None
           in_changelog = False
+          pending_notes = []
+          pending_note_index = None
+
+          def ensure_version_entry(version: str, *, prepend: bool = False) -> None:
+              if version not in version_notes:
+                  version_notes[version] = []
+              if version not in version_order:
+                  if prepend:
+                      version_order.insert(0, version)
+                  else:
+                      version_order.append(version)
 
           for raw_line in changelog_content.splitlines():
               line = raw_line.strip()
@@ -211,14 +222,30 @@ jobs:
               if header_match:
                   version = header_match.group("version")
                   if version:
-                      active_version = version.strip()
+                      version = version.strip()
+                      if pending_notes:
+                          target_version = current_version or version
+                          if not target_version:
+                              raise SystemExit("Found changelog notes without any version to assign")
+                          ensure_version_entry(target_version, prepend=not version_order)
+                          version_notes[target_version].extend(pending_notes)
+                          pending_notes.clear()
+                          pending_note_index = None
+                      active_version = version
                       active_note_index = None
-                      if active_version not in version_notes:
-                          version_notes[active_version] = []
-                          version_order.append(active_version)
+                      ensure_version_entry(active_version)
                   continue
 
               if active_version is None:
+                  if content.startswith("-"):
+                      text = content[1:].strip()
+                      if text:
+                          pending_notes.append(text)
+                          pending_note_index = len(pending_notes) - 1
+                  else:
+                      text = content.strip()
+                      if text and pending_note_index is not None:
+                          pending_notes[pending_note_index] += f" {text}"
                   continue
 
               if content.startswith("-"):
@@ -229,6 +256,13 @@ jobs:
                   text = content.strip()
                   if active_note_index is not None and text:
                       version_notes[active_version][active_note_index] += f" {text}"
+
+          if pending_notes:
+              target_version = current_version or (version_order[0] if version_order else None)
+              if not target_version:
+                  raise SystemExit("Found changelog notes without any version to assign")
+              ensure_version_entry(target_version, prepend=not version_order)
+              version_notes[target_version].extend(pending_notes)
 
           if not version_notes:
               raise SystemExit("No changelog entries with versions were found")
