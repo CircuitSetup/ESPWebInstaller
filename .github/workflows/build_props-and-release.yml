@@ -145,6 +145,122 @@ jobs:
           mv "$BIN_PATH" "target_repo/firmware/${{ matrix.name }}/$NEW_NAME"
           echo "✅ Renamed GTE_KEYPAD firmware -> target_repo/firmware/${{ matrix.name }}/$NEW_NAME"
 
+      - name: Extract Release Notes from Changelog
+        if: steps.check_version.outputs.should_build == 'true'
+        id: release_notes
+        env:
+          BASE_DIR: target_repo/${{ matrix.folder }}
+          CURRENT_VERSION: ${{ steps.get_version.outputs.version }}
+          LAST_VERSION: ${{ steps.latest_release.outputs.latest_tag }}
+        run: |
+          python <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          base_dir = Path(os.environ["BASE_DIR"])
+          src_dir = base_dir / "src"
+          if not src_dir.exists():
+              raise SystemExit(f"src directory not found at {src_dir}")
+
+          changelog_file = None
+          for path in sorted(src_dir.glob("*.ino")):
+              try:
+                  content = path.read_text(encoding="utf-8")
+              except UnicodeDecodeError:
+                  content = path.read_text(encoding="latin-1")
+              if "changelog" in content.lower():
+                  changelog_file = path
+                  changelog_content = content
+                  break
+
+          if changelog_file is None:
+              raise SystemExit("No .ino file containing a changelog was found")
+
+          current_version = os.environ.get("CURRENT_VERSION", "").lstrip("vV")
+          last_version = os.environ.get("LAST_VERSION", "") or None
+          if last_version:
+              last_version = last_version.lstrip("vV")
+
+          version_notes = {}
+          version_order = []
+          active_version = None
+          active_note_index = None
+          in_changelog = False
+
+          for raw_line in changelog_content.splitlines():
+              line = raw_line.strip()
+              if not in_changelog:
+                  if "changelog" in line.lower():
+                      in_changelog = True
+                  continue
+              if line.startswith("*/"):
+                  break
+              if not line:
+                  continue
+              if not line.startswith("*"):
+                  continue
+
+              content = line[1:].lstrip()
+              header_match = re.match(r"(?P<date>\d{4}/\d{2}/\d{2})\s+\([^)]*\)(?:\s+\[(?P<version>[^\]]+)\])?", content)
+              if header_match:
+                  version = header_match.group("version")
+                  if version:
+                      active_version = version.strip()
+                      active_note_index = None
+                      if active_version not in version_notes:
+                          version_notes[active_version] = []
+                          version_order.append(active_version)
+                  continue
+
+              if active_version is None:
+                  continue
+
+              if content.startswith("-"):
+                  text = content[1:].strip()
+                  version_notes[active_version].append(text)
+                  active_note_index = len(version_notes[active_version]) - 1
+              else:
+                  text = content.strip()
+                  if active_note_index is not None and text:
+                      version_notes[active_version][active_note_index] += f" {text}"
+
+          if not version_notes:
+              raise SystemExit("No changelog entries with versions were found")
+
+          if current_version and current_version not in version_notes:
+              raise SystemExit(f"Current version {current_version} not found in changelog")
+
+          selected_versions = []
+          for version in version_order:
+              if last_version and version == last_version:
+                  break
+              selected_versions.append(version)
+
+          if not selected_versions:
+              selected_versions = [current_version] if current_version else []
+
+          body_lines = []
+          for version in selected_versions:
+              notes = version_notes.get(version, [])
+              if not notes:
+                  continue
+              body_lines.append(f"## {version}")
+              for note in notes:
+                  body_lines.append(f"- {note}")
+              body_lines.append("")
+
+          if not body_lines:
+              raise SystemExit("No release notes collected from changelog")
+
+          body = "\n".join(body_lines).strip()
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write("body<<EOF\n")
+              fh.write(body)
+              fh.write("\nEOF\n")
+          PY
+
       - name: Create Release on Target Repo
         if: steps.check_version.outputs.should_build == 'true'
         id: create_release
@@ -157,7 +273,8 @@ jobs:
           name: "${{ matrix.name }} Firmware ${{ steps.get_version.outputs.version }}"
           draft: false
           prerelease: false
-          generate_release_notes: true
+          generate_release_notes: false
+          body: ${{ steps.release_notes.outputs.body }}
           files: |
             target_repo/firmware/${{ matrix.name }}/*.bin
           fail_on_unmatched_files: true
