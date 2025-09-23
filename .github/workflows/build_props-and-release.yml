@@ -73,7 +73,11 @@ jobs:
       - name: Extract and Normalize Firmware Version
         id: get_version
         run: |
-          RAW_VERSION=$(grep -hE '#define\s+[A-Z_]*VERSION[A-Z_]*\s+"[Vv][0-9.]+"' target_repo/${{ matrix.folder }}src/*_global.h | head -n 1 | sed -E 's/.*VERSION[A-Z_]*\s+"[Vv]([0-9.]+)".*/\1/')
+          VERSION_PATTERN='#define[[:space:]]+[A-Z_]*VERSION[A-Z_]*[[:space:]]+"[Vv][0-9.]+"'
+          RAW_VERSION=$(grep -hRE --include='*_global.h' "$VERSION_PATTERN" target_repo/${{ matrix.folder }}src |
+            head -n 1 |
+            tr -d '\r' |
+            sed -E 's/.*VERSION[A-Z_]*[[:space:]]+"[Vv]([0-9.]+)".*/\1/')
           if [ -z "$RAW_VERSION" ]; then
             echo "❌ Version number not found!"
             exit 1
