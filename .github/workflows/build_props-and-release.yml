@@ -35,8 +35,16 @@ jobs:
       - name: Get Latest Commit from Target Repo
         id: latest_commit
         run: |
-          LATEST_COMMIT=$(curl -s "https://api.github.com/repos/${{ matrix.path }}/commits/main" | jq -r .sha)
-          if [ "$LATEST_COMMIT" == "null" ]; then
+          REPO_INFO=$(curl -s "https://api.github.com/repos/${{ matrix.path }}")
+          DEFAULT_BRANCH=$(echo "$REPO_INFO" | jq -r .default_branch)
+          if [ -z "$DEFAULT_BRANCH" ] || [ "$DEFAULT_BRANCH" == "null" ]; then
+            echo "⚠️ Unable to determine default branch, falling back to 'main'"
+            DEFAULT_BRANCH="main"
+          fi
+          echo "Using branch: $DEFAULT_BRANCH"
+          LATEST_COMMIT=$(curl -s "https://api.github.com/repos/${{ matrix.path }}/commits/$DEFAULT_BRANCH" | jq -r .sha)
+          if [ -z "$LATEST_COMMIT" ] || [ "$LATEST_COMMIT" == "null" ]; then
+            echo "⚠️ Unable to fetch latest commit for $DEFAULT_BRANCH, disabling cache"
             LATEST_COMMIT="no-cache"
           fi
           echo "Using commit hash: $LATEST_COMMIT"
