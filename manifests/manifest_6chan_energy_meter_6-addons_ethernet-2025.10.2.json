@@ -1,0 +1,1 @@
+{"name":"CircuitSetup 6 Channel Energy Meter + 6 Add-ons Ethernet","version":"2025.10.2","builds":[{"chipFamily":"ESP32-S3","parts":[{"path":"https://circuitsetup.github.io/ESPWebInstaller/firmware/6chan_energy_meter_6-addons_ethernet-2025.10.2.bin","offset":0}]}]}
