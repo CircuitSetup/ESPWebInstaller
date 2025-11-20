@@ -1,0 +1,1 @@
+{"name":"CircuitSetup 6 Channel Energy Meter Main","version":"2025.11.0","builds":[{"chipFamily":"ESP32","parts":[{"path":"https://circuitsetup.github.io/ESPWebInstaller/firmware/6chan_energy_meter_main_board-2025.11.0.bin","offset":0}]}]}
