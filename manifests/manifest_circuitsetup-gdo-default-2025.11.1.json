@@ -1,0 +1,1 @@
+{"name":"CircuitSetup Security+ Garage Door Opener","version":"2025.11.1","builds":[{"chipFamily":"ESP32-S3","parts":[{"path":"https://circuitsetup.github.io/ESPWebInstaller/firmware/circuitsetup-gdo-default-2025.11.1.bin","offset":0}]}]}
