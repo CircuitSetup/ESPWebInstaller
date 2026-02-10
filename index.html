@@ -121,12 +121,15 @@
         const groups = {
           GDO: [],
           Meter: [],
-          Ethernet: []
+          Ethernet: [],
+          EthernetWaveshare: []
         };
       
         products.forEach(p => {
           if (p.productId.includes('gdo')) {
             groups.GDO.push(p);
+          } else if (p.productId.includes('ethernet_waveshare')) {
+            groups.EthernetWaveshare.push(p);
           } else if (p.productId.includes('ethernet')) {
             groups.Ethernet.push(p);
           } else {
@@ -146,10 +149,13 @@
         const displayNames = {
           GDO: "Garage Door Opener",
           Meter: "6 Channel Meter",
-          Ethernet: "6 Channel Meter Ethernet (for Lilygo T-ETH-Lite ESP32S3)"
+          Ethernet: "6 Channel Meter Ethernet (Lilygo T-ETH-Lite ESP32S3)",
+          EthernetWaveshare: "6 Channel Meter Ethernet Waveshare (ESP32-S3-ETH)"
         };
         
         for (const [groupName, products] of Object.entries(groups)) {
+          if (products.length === 0) continue;
+
           const header = document.createElement("h3");
           header.textContent = displayNames[groupName] || groupName;
           productList.appendChild(header);

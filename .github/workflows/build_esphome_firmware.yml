@@ -76,6 +76,24 @@ jobs:
         id: set-files
         run: |
           source ./scripts/configs.sh
+
+          required_waveshare_configs=(
+            "6chan_energy_meter_main_ethernet_waveshare.yaml"
+            "6chan_energy_meter_1-addon_ethernet_waveshare.yaml"
+            "6chan_energy_meter_2-addons_ethernet_waveshare.yaml"
+            "6chan_energy_meter_3-addons_ethernet_waveshare.yaml"
+            "6chan_energy_meter_4-addons_ethernet_waveshare.yaml"
+            "6chan_energy_meter_5-addons_ethernet_waveshare.yaml"
+            "6chan_energy_meter_6-addons_ethernet_waveshare.yaml"
+          )
+
+          for config in "${required_waveshare_configs[@]}"; do
+            if [[ -z "${CONFIG_META[$config]}" ]]; then
+              echo "Missing required config in scripts/configs.sh: $config"
+              exit 1
+            fi
+          done
+
           version="${{ steps.esphome_version.outputs.version }}"
           force_build="${{ github.event.inputs.force_build }}"
           force_build="${force_build:-false}"
