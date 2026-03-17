@@ -314,13 +314,11 @@ jobs:
 
       - name: Create Release on Target Repo
         if: steps.check_version.outputs.should_build == 'true'
-        id: create_release
         uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         with:
+          token: ${{ secrets.RELEASE_TOKEN }}
           repository: ${{ matrix.path }}
-          tag_name: "${{ steps.get_version.outputs.version }}"
+          tag_name: ${{ steps.get_version.outputs.version }}
           name: "${{ matrix.name }} Firmware ${{ steps.get_version.outputs.version }}"
           draft: false
           prerelease: false
@@ -329,5 +327,6 @@ jobs:
           files: |
             target_repo/firmware/${{ matrix.name }}/*.bin
           fail_on_unmatched_files: true
+
 
 
