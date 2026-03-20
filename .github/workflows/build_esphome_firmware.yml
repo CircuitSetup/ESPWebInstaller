@@ -296,10 +296,9 @@ jobs:
       - name: Create release on circuitsetup-esphome
         if: steps.release.outputs.should_release == 'true'
         uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         with:
           repository: CircuitSetup/circuitsetup-esphome
+          token: ${{ secrets.RELEASE_TOKEN }}
           tag_name: ${{ steps.release.outputs.tag }}
           name: ${{ steps.release.outputs.friendly }} v${{ steps.release.outputs.version }} - ESPHome v${{ steps.release.outputs.esphome_version }}
           body: Built with ESPHome ${{ steps.release.outputs.esphome_version }}
