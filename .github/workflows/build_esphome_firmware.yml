@@ -327,6 +327,74 @@ jobs:
       - name: Generate any missing manifests
         run: ./scripts/generate-missing-manifests.sh
 
+      - name: Prune old firmware and manifests
+        run: |
+          mkdir -p firmware manifests
+
+          declare -A product_versions
+          declare -A retained_builds
+
+          for firmware_path in firmware/*.bin; do
+            [ -e "$firmware_path" ] || continue
+
+            firmware_file=$(basename "$firmware_path")
+            if [[ "$firmware_file" =~ ^(.+)-([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?)\.bin$ ]]; then
+              productId="${BASH_REMATCH[1]}"
+              version="${BASH_REMATCH[2]}"
+            else
+              echo "Skipping firmware cleanup for $firmware_file — invalid filename pattern"
+              continue
+            fi
+
+            product_versions["$productId"]+="$version"$'\n'
+          done
+
+          for productId in "${!product_versions[@]}"; do
+            sorted_versions=$(printf "%s" "${product_versions[$productId]}" | sed '/^$/d' | sort -Vr | awk '!seen[$0]++')
+            retained_versions=$(printf "%s\n" "$sorted_versions" | head -n 5)
+
+            while IFS= read -r version; do
+              [ -n "$version" ] || continue
+              retained_builds["$productId|$version"]=1
+            done <<< "$retained_versions"
+          done
+
+          for firmware_path in firmware/*.bin; do
+            [ -e "$firmware_path" ] || continue
+
+            firmware_file=$(basename "$firmware_path")
+            if [[ "$firmware_file" =~ ^(.+)-([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?)\.bin$ ]]; then
+              productId="${BASH_REMATCH[1]}"
+              version="${BASH_REMATCH[2]}"
+            else
+              continue
+            fi
+
+            if [[ -z "${retained_builds["$productId|$version"]}" ]]; then
+              echo "Removing old firmware: $firmware_path"
+              rm -f "$firmware_path"
+            fi
+          done
+
+          for manifest_path in manifests/manifest_*.json; do
+            [ -e "$manifest_path" ] || continue
+
+            manifest_file=$(basename "$manifest_path")
+            if [[ "$manifest_file" =~ ^manifest_(.+)-([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?)\.json$ ]]; then
+              productId="${BASH_REMATCH[1]}"
+              version="${BASH_REMATCH[2]}"
+            else
+              echo "Skipping manifest cleanup for $manifest_file — invalid filename pattern"
+              continue
+            fi
+
+            matching_firmware="firmware/${productId}-${version}.bin"
+            if [[ -z "${retained_builds["$productId|$version"]}" || ! -f "$matching_firmware" ]]; then
+              echo "Removing old or orphaned manifest: $manifest_path"
+              rm -f "$manifest_path"
+            fi
+          done
+
       - name: Generate firmware index
         run: |
           mkdir -p manifests
@@ -392,16 +460,16 @@ jobs:
 
           echo "]" >> manifests/firmware_index.json
 
-      - name: Commit firmware index to repo
+      - name: Commit pruned firmware, manifests, and firmware index
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "github-actions@github.com"
           git pull origin main
-          git add manifests/firmware_index.json
+          git add -A firmware manifests
 
           if git diff --cached --quiet; then
             echo "⚠️ No changes to commit."
           else
-            git commit -m "Update firmware index"
+            git commit -m "Prune old firmware and update manifests"
             git push origin HEAD:main
           fi
