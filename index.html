@@ -28,6 +28,22 @@
       h3 {
         margin-top: 1.5em;
       }
+      .product-header-link {
+        color: inherit;
+        text-decoration: underline;
+        text-underline-offset: 0.12em;
+      }
+      .selector-label-link {
+        color: inherit;
+        text-decoration: underline;
+        text-underline-offset: 0.12em;
+      }
+      .product-header-link:hover,
+      .product-header-link:focus,
+      .selector-label-link:hover,
+      .selector-label-link:focus {
+        color: inherit;
+      }
       a {
         color: #03a9f4;
       }
@@ -81,6 +97,14 @@
         flex-direction: column;
         gap: 4px;
       }
+      .selector-note {
+        font-size: 0.9em;
+        line-height: 1.5;
+        margin: 0;
+      }
+      .selector-note a {
+        text-decoration: underline;
+      }
       .selector-field select,
       #version-select {
         font: inherit;
@@ -105,13 +129,13 @@
       <h2>Select your product:</h2>
       <div id="product-list">
         <div class="product-section" id="meter-section">
-          <h3>6 Channel Meter</h3>
+          <h3><a class="product-header-link" href="https://circuitsetup.us/index.php/product/expandable-6-channel-esp32-energy-meter/" target="_blank" rel="noopener noreferrer">6 Channel Meter</a></h3>
           <div class="meter-selectors">
             <label class="selector-field" for="meter-addon-select">
-              <span>Number of add-on boards</span>
+              <span>Number of <a class="selector-label-link" href="https://circuitsetup.us/index.php/product/expandable-6-channel-esp32-energy-meter-add-on-board/" target="_blank" rel="noopener noreferrer">add-on boards</a></span>
               <select id="meter-addon-select">
                 <option value="">Select add-on boards</option>
-                <option value="none">None</option>
+                <option value="none" selected>None</option>
                 <option value="1">1</option>
                 <option value="2">2</option>
                 <option value="3">3</option>
@@ -119,12 +143,13 @@
                 <option value="5">5</option>
                 <option value="6">6</option>
               </select>
+              <p id="meter-addon-note" class="selector-note hidden"></p>
             </label>
             <label class="selector-field" for="meter-connection-select">
               <span>Connection type</span>
               <select id="meter-connection-select">
                 <option value="">Select connection type</option>
-                <option value="wifi">Wi-Fi</option>
+                <option value="wifi" selected>Wi-Fi</option>
                 <option value="ethernet">Ethernet (Lilygo)</option>
                 <option value="ethernet_waveshare">Ethernet (Waveshare)</option>
               </select>
@@ -132,7 +157,7 @@
           </div>
         </div>
         <div class="product-section hidden" id="gdo-section">
-          <h3>Garage Door Opener</h3>
+          <h3><a class="product-header-link" href="https://circuitsetup.us/product/security-garage-door-opener/" target="_blank" rel="noopener noreferrer">Garage Door Opener</a></h3>
           <ul class="radios" id="gdo-product-list">
             <!-- dynamically populated -->
           </ul>
@@ -149,22 +174,21 @@
       <p>
         To flash your ESP32 you will likely need to hold down the right (IO0) button before clicking on "Install..."
       </p>
-      <p>
-        To flash your GDO:
-        <ol>
-          <li>Hold down the <b>“Reset”</b> (left) button on the GDO</li>
-          <li>Click <b>“Install”</b></li>
-          <li>Hold down the <b>“BOOT”</b> button while still holding the <b>“Reset”</b> button</li>
-          <li>Release the <b>“Reset”</b> button</li>
-          <li>Release the <b>“BOOT”</b> button</li>
-        </ol>
-      </p>
       
       <div class="footer">
         Installer powered by <a href="https://esphome.github.io/esp-web-tools/">ESP Web Tools</a>.
       </div>
       <script>
       let firmwareIndex = [];
+      const addonJumperPositions = [
+        { ordinal: "1st", pins: "(0, 16)" },
+        { ordinal: "2nd", pins: "(27, 17)" },
+        { ordinal: "3rd", pins: "(2, 21)" },
+        { ordinal: "4th", pins: "(13, 22)" },
+        { ordinal: "5th", pins: "(14, 25)" },
+        { ordinal: "6th", pins: "(15, 26)" }
+      ];
+      const addonConfigSourceUrl = "https://github.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/tree/master/Software/ESPHome";
       
       async function loadFirmwareIndex() {
         const response = await fetch('manifests/firmware_index.json');
@@ -230,9 +254,41 @@
         });
       }
 
+      function formatList(items) {
+        if (items.length <= 1) {
+          return items[0] || "";
+        }
+
+        if (items.length === 2) {
+          return `${items[0]} and ${items[1]}`;
+        }
+
+        return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+      }
+
+      function updateAddonNote(addonValue) {
+        const addonNote = document.getElementById("meter-addon-note");
+        const addonCount = parseInt(addonValue, 10);
+
+        if (Number.isNaN(addonCount) || addonCount < 1 || addonCount > addonJumperPositions.length) {
+          addonNote.innerHTML = "";
+          addonNote.classList.add("hidden");
+          return;
+        }
+
+        const selectedPositions = addonJumperPositions.slice(0, addonCount);
+        const ordinals = selectedPositions.map(position => position.ordinal);
+        const pins = selectedPositions.map(position => position.pins);
+        const positionLabel = addonCount === 1 ? "position" : "positions";
+
+        addonNote.innerHTML = `Add-on board CS jumpers should be in the ${formatList(ordinals)} ${positionLabel}: ${pins.join(", ")}. CS pins are defined in the <a href="${addonConfigSourceUrl}" target="_blank" rel="noopener noreferrer">ESPHome config files</a>.`;
+        addonNote.classList.remove("hidden");
+      }
+
       function resetMeterSelectors() {
         document.getElementById("meter-addon-select").value = "";
         document.getElementById("meter-connection-select").value = "";
+        updateAddonNote("");
       }
 
       function resetVersionSelect(versionSelect, installButton, message = "Select meter options or GDO first") {
@@ -354,6 +410,7 @@
 
         function updateMeterSelection() {
           clearGdoSelection();
+          updateAddonNote(meterAddonSelect.value);
 
           if (!meterAddonSelect.value || !meterConnectionSelect.value) {
             resetVersionSelect(versionSelect, installButton, "Select both meter options");
@@ -387,7 +444,7 @@
           }
         });
 
-        resetVersionSelect(versionSelect, installButton);
+        updateMeterSelection();
       }
       
       init();
