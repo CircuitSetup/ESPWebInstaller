@@ -65,6 +65,28 @@
         list-style: none;
         line-height: 2em;
       }
+      .radios {
+        padding-left: 0;
+      }
+      .product-section {
+        margin-bottom: 24px;
+      }
+      .meter-selectors {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+      }
+      .selector-field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .selector-field select,
+      #version-select {
+        font: inherit;
+        padding: 6px;
+        max-width: 100%;
+      }
       @media (prefers-color-scheme: dark) {
         body {
           background-color: #333;
@@ -81,12 +103,44 @@
     <div class="content">
       <h1>CircuitSetup ESPHome Installer</h1>
       <h2>Select your product:</h2>
-      <ul class="radios" id="product-list">
-        <!-- dynamically populated -->
-      </ul>
+      <div id="product-list">
+        <div class="product-section" id="meter-section">
+          <h3>6 Channel Meter</h3>
+          <div class="meter-selectors">
+            <label class="selector-field" for="meter-addon-select">
+              <span>Number of add-on boards</span>
+              <select id="meter-addon-select">
+                <option value="">Select add-on boards</option>
+                <option value="none">None</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+              </select>
+            </label>
+            <label class="selector-field" for="meter-connection-select">
+              <span>Connection type</span>
+              <select id="meter-connection-select">
+                <option value="">Select connection type</option>
+                <option value="wifi">Wi-Fi</option>
+                <option value="ethernet">Ethernet (Lilygo)</option>
+                <option value="ethernet_waveshare">Ethernet (Waveshare)</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="product-section hidden" id="gdo-section">
+          <h3>Garage Door Opener</h3>
+          <ul class="radios" id="gdo-product-list">
+            <!-- dynamically populated -->
+          </ul>
+        </div>
+      </div>
       <h2>Select firmware version:</h2>
       <select id="version-select" disabled>
-        <option value="">Select product first</option>
+        <option value="">Select meter options or GDO first</option>
       </select>
       <p class="button-row" align="center">
         <esp-web-install-button class="invisible"></esp-web-install-button>
@@ -117,66 +171,6 @@
         firmwareIndex = await response.json();
       }
       
-      function groupProducts(products) {
-        const groups = {
-          GDO: [],
-          Meter: [],
-          Ethernet: [],
-          EthernetWaveshare: []
-        };
-      
-        products.forEach(p => {
-          if (p.productId.includes('gdo')) {
-            groups.GDO.push(p);
-          } else if (p.productId.includes('ethernet_waveshare')) {
-            groups.EthernetWaveshare.push(p);
-          } else if (p.productId.includes('ethernet')) {
-            groups.Ethernet.push(p);
-          } else {
-            groups.Meter.push(p);
-          }
-        });
-      
-        // Sort each group alphabetically by name
-        Object.values(groups).forEach(group => group.sort((a, b) => a.name.localeCompare(b.name)));
-      
-        return groups;
-      }
-      
-      function createProductRadios() {
-        const productList = document.getElementById("product-list");
-        const groups = groupProducts(firmwareIndex);
-        const displayNames = {
-          GDO: "Garage Door Opener",
-          Meter: "6 Channel Meter",
-          Ethernet: "6 Channel Meter Ethernet (Lilygo T-ETH-Lite ESP32S3)",
-          EthernetWaveshare: "6 Channel Meter Ethernet Waveshare (ESP32-S3-ETH)"
-        };
-        
-        for (const [groupName, products] of Object.entries(groups)) {
-          if (products.length === 0) continue;
-
-          const header = document.createElement("h3");
-          header.textContent = displayNames[groupName] || groupName;
-          productList.appendChild(header);
-      
-          products.forEach(product => {
-            const li = document.createElement("li");
-            const label = document.createElement("label");
-            const radio = document.createElement("input");
-      
-            radio.type = "radio";
-            radio.name = "type";
-            radio.value = product.productId;
-      
-            label.appendChild(radio);
-            label.append(` ${product.name}`);
-            li.appendChild(label);
-            productList.appendChild(li);
-          });
-        }
-      }
-      
       function compareVersions(a, b) {
         const parse = v => v.split(/[-.]/).map(x => isNaN(x) ? x : parseInt(x));
         const pa = parse(a), pb = parse(b);
@@ -190,58 +184,210 @@
         return 0;
       }
 
+      function getProductEntry(productId) {
+        return firmwareIndex.find(product => product.productId === productId);
+      }
+
+      function getManifestPath(productId, version) {
+        return `manifests/manifest_${productId}-${version}.json`;
+      }
+
+      function createGdoRadios() {
+        const gdoSection = document.getElementById("gdo-section");
+        const gdoProductList = document.getElementById("gdo-product-list");
+        const gdoProducts = firmwareIndex
+          .filter(product => product.productId.startsWith("circuitsetup-gdo"))
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        gdoProductList.innerHTML = "";
+
+        if (gdoProducts.length === 0) {
+          gdoSection.classList.add("hidden");
+          return;
+        }
+
+        gdoSection.classList.remove("hidden");
+
+        gdoProducts.forEach(product => {
+          const li = document.createElement("li");
+          const label = document.createElement("label");
+          const radio = document.createElement("input");
+
+          radio.type = "radio";
+          radio.name = "type";
+          radio.value = product.productId;
+
+          label.appendChild(radio);
+          label.append(` ${product.name}`);
+          li.appendChild(label);
+          gdoProductList.appendChild(li);
+        });
+      }
+
+      function clearGdoSelection() {
+        document.querySelectorAll('input[name="type"]').forEach(radio => {
+          radio.checked = false;
+        });
+      }
+
+      function resetMeterSelectors() {
+        document.getElementById("meter-addon-select").value = "";
+        document.getElementById("meter-connection-select").value = "";
+      }
+
+      function resetVersionSelect(versionSelect, installButton, message = "Select meter options or GDO first") {
+        versionSelect.innerHTML = "";
+
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = message;
+        option.selected = true;
+
+        versionSelect.appendChild(option);
+        versionSelect.disabled = true;
+        installButton.manifest = "";
+        installButton.classList.add("invisible");
+      }
+
+      function populateVersionSelect(versionSelect, installButton, resolvedVersions) {
+        versionSelect.innerHTML = "";
+
+        resolvedVersions.forEach((item, index) => {
+          const option = document.createElement("option");
+          option.value = item.manifestPath;
+          option.textContent = item.version;
+          option.dataset.version = item.version;
+
+          if (index === 0) {
+            option.selected = true;
+          }
+
+          versionSelect.appendChild(option);
+        });
+
+        versionSelect.disabled = false;
+        versionSelect.dispatchEvent(new Event("change"));
+      }
+
+      function resolveMeterProductIds(addonValue, connectionValue) {
+        if (!addonValue || !connectionValue) {
+          return [];
+        }
+
+        if (addonValue === "none") {
+          if (connectionValue === "wifi") {
+            return ["6chan_energy_meter_main_board"];
+          }
+
+          if (connectionValue === "ethernet") {
+            return ["6chan_energy_meter_main_ethernet"];
+          }
+
+          if (connectionValue === "ethernet_waveshare") {
+            return [
+              "6chan_energy_meter_main_ethernet_waveshare",
+              "6chan_energy_meter_main_ethernet_ws"
+            ];
+          }
+
+          return [];
+        }
+
+        const addonSuffix = addonValue === "1" ? "1-addon" : `${addonValue}-addons`;
+
+        if (connectionValue === "wifi") {
+          return [`6chan_energy_meter_${addonSuffix}`];
+        }
+
+        if (connectionValue === "ethernet") {
+          return [`6chan_energy_meter_${addonSuffix}_ethernet`];
+        }
+
+        if (connectionValue === "ethernet_waveshare") {
+          return [`6chan_energy_meter_${addonSuffix}_ethernet_waveshare`];
+        }
+
+        return [];
+      }
+
+      function buildResolvedVersions(productIds) {
+        const versionMap = new Map();
+
+        productIds.forEach(productId => {
+          const entry = getProductEntry(productId);
+
+          if (!entry) {
+            return;
+          }
+
+          entry.versions.forEach(versionEntry => {
+            if (!versionMap.has(versionEntry.version)) {
+              versionMap.set(versionEntry.version, {
+                version: versionEntry.version,
+                manifestPath: getManifestPath(productId, versionEntry.version)
+              });
+            }
+          });
+        });
+
+        return Array.from(versionMap.values()).sort((a, b) => compareVersions(a.version, b.version));
+      }
+
       async function init() {
         await loadFirmwareIndex();
-        createProductRadios();
+        createGdoRadios();
       
         const versionSelect = document.getElementById("version-select");
         const installButton = document.querySelector("esp-web-install-button");
-      
+        const meterAddonSelect = document.getElementById("meter-addon-select");
+        const meterConnectionSelect = document.getElementById("meter-connection-select");
+
+        function populateVersionsForProductIds(productIds) {
+          const resolvedVersions = buildResolvedVersions(productIds);
+
+          if (resolvedVersions.length > 0) {
+            populateVersionSelect(versionSelect, installButton, resolvedVersions);
+          } else {
+            resetVersionSelect(versionSelect, installButton, "No firmware available");
+          }
+        }
+
+        function updateMeterSelection() {
+          clearGdoSelection();
+
+          if (!meterAddonSelect.value || !meterConnectionSelect.value) {
+            resetVersionSelect(versionSelect, installButton, "Select both meter options");
+            return;
+          }
+
+          populateVersionsForProductIds(
+            resolveMeterProductIds(meterAddonSelect.value, meterConnectionSelect.value)
+          );
+        }
+
         document.querySelectorAll('input[name="type"]').forEach(radio => {
           radio.addEventListener("change", () => {
-            const productId = radio.value;
-            const entry = firmwareIndex.find(p => p.productId === productId);
-      
-            versionSelect.innerHTML = "";
-            installButton.classList.add("invisible");
-            
-            if (entry && entry.versions.length > 0) {
-              const sortedVersions = [...entry.versions].sort((a, b) => compareVersions(a.version, b.version));
-              sortedVersions.forEach((v, i) => {
-                const opt = document.createElement("option");
-                opt.value = v.version;
-                opt.textContent = v.version;
-                if (i === 0) opt.selected = true; // latest
-                versionSelect.appendChild(opt);
-              });
-              versionSelect.disabled = false;
-            
-              versionSelect.setAttribute("data-product", productId);
-            
-              //Manually trigger change to activate Connect button
-              versionSelect.dispatchEvent(new Event("change"));
-            } else {
-              const opt = document.createElement("option");
-              opt.value = "";
-              opt.textContent = "No firmware available";
-              versionSelect.appendChild(opt);
-              versionSelect.disabled = true;
-            }
-            versionSelect.setAttribute("data-product", productId);
+            resetMeterSelectors();
+            populateVersionsForProductIds([radio.value]);
           });
         });
+
+        meterAddonSelect.addEventListener("change", updateMeterSelection);
+        meterConnectionSelect.addEventListener("change", updateMeterSelection);
       
         versionSelect.addEventListener("change", () => {
-          const selectedVersion = versionSelect.value;
-          const productId = versionSelect.getAttribute("data-product");
+          const selectedManifest = versionSelect.value;
       
-          if (selectedVersion && productId) {
-            installButton.manifest = `manifests/manifest_${productId}-${selectedVersion}.json`;
+          if (selectedManifest) {
+            installButton.manifest = selectedManifest;
             installButton.classList.remove("invisible");
           } else {
+            installButton.manifest = "";
             installButton.classList.add("invisible");
           }
         });
+
+        resetVersionSelect(versionSelect, installButton);
       }
       
       init();
