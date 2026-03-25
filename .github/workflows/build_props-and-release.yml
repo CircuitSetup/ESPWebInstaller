@@ -15,18 +15,28 @@ jobs:
           - name: "Time Circuits Display"
             path: "CircuitSetup/Time-Circuits-Display"
             folder: "Software/"
+            install_path: "Software/install"
+            has_sound_pack: true
           - name: "Flux Capacitor"
             path: "CircuitSetup/Flux-Capacitor"
             folder: ""
+            install_path: "install"
+            has_sound_pack: true
           - name: "SID"
             path: "CircuitSetup/SID"
             folder: ""
+            install_path: "install"
+            has_sound_pack: false
           - name: "Dash-Gauges"
             path: "CircuitSetup/Dash-Gauges"
             folder: ""
+            install_path: "install"
+            has_sound_pack: true
           - name: "Remote"
             path: "CircuitSetup/Remote"
             folder: ""
+            install_path: "install"
+            has_sound_pack: true
 
     steps:
       - name: Checkout Builder Repo
@@ -311,6 +321,42 @@ jobs:
               fh.write(body)
               fh.write("\nEOF\n")
           PY
+
+      - name: Extract Sound Pack Binary
+        if: steps.check_version.outputs.should_build == 'true' && matrix.has_sound_pack
+        run: |
+          install_dir="target_repo/${{ matrix.install_path }}"
+          firmware_dir="target_repo/firmware/${{ matrix.name }}"
+
+          if [ ! -d "$install_dir" ]; then
+            echo "❌ Install directory not found: $install_dir"
+            exit 1
+          fi
+
+          zip_path=$(find "$install_dir" -maxdepth 1 -type f -name 'sound-pack-*.zip' | sort -V | tail -n 1)
+          if [ -z "$zip_path" ]; then
+            echo "❌ No sound-pack zip found in $install_dir"
+            exit 1
+          fi
+
+          echo "📦 Extracting sound pack from $zip_path"
+          extract_dir=$(mktemp -d)
+          unzip -q "$zip_path" -d "$extract_dir"
+
+          mapfile -t sound_bins < <(find "$extract_dir" -type f -name '*.bin' ! -path '*/__MACOSX/*' | sort)
+          if [ "${#sound_bins[@]}" -eq 0 ]; then
+            echo "❌ No .bin file found inside $zip_path"
+            exit 1
+          fi
+
+          if [ "${#sound_bins[@]}" -ne 1 ]; then
+            echo "❌ Expected exactly one .bin inside $zip_path, found ${#sound_bins[@]}"
+            printf '%s\n' "${sound_bins[@]}"
+            exit 1
+          fi
+
+          cp "${sound_bins[0]}" "$firmware_dir/"
+          echo "✅ Added extracted sound-pack binary $(basename "${sound_bins[0]}") to $firmware_dir"
 
       - name: Create Release on Target Repo
         if: steps.check_version.outputs.should_build == 'true'
