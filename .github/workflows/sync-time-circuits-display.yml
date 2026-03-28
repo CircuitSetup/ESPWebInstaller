@@ -1,0 +1,151 @@
+name: Sync Time Circuits Display
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-time-circuits-display
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      SOURCE_REPO: CircuitSetup/Time-Circuits-Display-A10001986
+      SOURCE_BRANCH: main
+      TARGET_REPO: CircuitSetup/Time-Circuits-Display
+      TARGET_BRANCH: master
+
+    steps:
+      - name: Checkout controller repo
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.11"
+
+      - name: Verify RELEASE_TOKEN is configured
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${RELEASE_TOKEN}" ]; then
+            echo "RELEASE_TOKEN is required for cross-repo sync and push operations." >&2
+            exit 1
+          fi
+
+      - name: Clone upstream source repo
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch "${SOURCE_BRANCH}" "https://github.com/${SOURCE_REPO}.git" source_repo
+
+      - name: Clone target repo
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch "${TARGET_BRANCH}" \
+            "https://x-access-token:${RELEASE_TOKEN}@github.com/${TARGET_REPO}.git" \
+            target_repo
+
+      - name: Run sync helper
+        run: |
+          set -euo pipefail
+          python scripts/sync_time_circuits_display.py \
+            --source-dir source_repo \
+            --target-dir target_repo \
+            --summary-file sync-summary.md
+
+      - name: Publish helper summary
+        run: |
+          set -euo pipefail
+          cat sync-summary.md >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Detect target repo changes
+        id: detect_changes
+        working-directory: target_repo
+        run: |
+          set -euo pipefail
+          status="$(git status --short --untracked-files=all)"
+
+          if [ -z "${status}" ]; then
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "changed=true" >> "${GITHUB_OUTPUT}"
+            {
+              echo "status<<EOF"
+              printf '%s\n' "${status}"
+              echo "EOF"
+            } >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Install PlatformIO
+        if: steps.detect_changes.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install platformio
+
+      - name: Build merged target repo
+        if: steps.detect_changes.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          pio run -d target_repo/Software
+
+      - name: Commit and push target repo changes
+        if: steps.detect_changes.outputs.changed == 'true'
+        id: push_changes
+        working-directory: target_repo
+        env:
+          TARGET_BRANCH: ${{ env.TARGET_BRANCH }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add README.md AddOns.md CheatSheet.pdf img Software/src
+
+          if git diff --cached --quiet; then
+            echo "commit_sha=" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          git commit -m "Sync from Time-Circuits-Display-A10001986"
+          git push origin "HEAD:${TARGET_BRANCH}"
+          echo "commit_sha=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
+
+      - name: Publish final run summary
+        if: always()
+        env:
+          CHANGED: ${{ steps.detect_changes.outputs.changed }}
+          STATUS: ${{ steps.detect_changes.outputs.status }}
+          COMMIT_SHA: ${{ steps.push_changes.outputs.commit_sha }}
+        run: |
+          set -euo pipefail
+          {
+            echo ""
+            echo "## Workflow Result"
+            echo "- Target repo: \`${TARGET_REPO}@${TARGET_BRANCH}\`"
+
+            if [ "${CHANGED}" != "true" ]; then
+              echo "- Push performed: \`false\`"
+              echo "- Result: No sync changes were required."
+            else
+              if [ -n "${COMMIT_SHA}" ]; then
+                echo "- Push performed: \`true\`"
+                echo "- Commit: \`${COMMIT_SHA}\`"
+              else
+                echo "- Push performed: \`false\`"
+                echo "- Result: Changes were detected, but the build or push step did not complete."
+              fi
+              echo ""
+              echo "### Changed Files"
+              echo '```text'
+              printf '%s\n' "${STATUS}"
+              echo '```'
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
