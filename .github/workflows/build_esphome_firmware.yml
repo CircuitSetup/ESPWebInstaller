@@ -130,11 +130,8 @@ jobs:
     runs-on: ubuntu-latest
     if: needs.determine-build.outputs.files != '[]' && github.event.inputs.generate_json_only != 'true'
 
-    concurrency:
-      group: build-firmware-${{ matrix.files }}
-      cancel-in-progress: false
-
     strategy:
+      max-parallel: 1
       matrix:
         files: ${{ fromJson(needs.determine-build.outputs.files) }}
 
