@@ -14,8 +14,17 @@ on:
       - main
   workflow_dispatch:  # Allows manual runs
     inputs:
+      firmware_family:
+        description: 'Firmware family to build'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - gdo
+          - energy_meter
       force_build:
-        description: 'Force build even if firmware is up to date'
+        description: 'Force build selected firmware even if firmware is up to date'
         required: false
         default: 'false'
       esphome_dev:
@@ -97,20 +106,78 @@ jobs:
           version="${{ steps.esphome_version.outputs.version }}"
           force_build="${{ github.event.inputs.force_build }}"
           force_build="${force_build:-false}"
+          firmware_family="${{ github.event.inputs.firmware_family }}"
+          firmware_family="${firmware_family:-all}"
+          source_versions_file="manifests/source_versions.json"
+          track_source_versions="true"
+
+          if [[ "${{ github.event.inputs.esphome_dev }}" == "true" ]]; then
+            track_source_versions="false"
+            echo "ESPHome dev build selected. Skipping master source-version change detection."
+          fi
+
+          if [[ "$track_source_versions" == "true" && ! -f "$source_versions_file" ]]; then
+            echo "{}" > "$source_versions_file"
+          fi
+
+          selected_configs=()
+          for config in "${CONFIG_LIST[@]}"; do
+            case "$firmware_family" in
+              all)
+                selected_configs+=("$config")
+                ;;
+              gdo)
+                if [[ "$config" == circuitsetup-gdo-* ]]; then
+                  selected_configs+=("$config")
+                fi
+                ;;
+              energy_meter)
+                if [[ "$config" == 6chan_energy_meter_* ]]; then
+                  selected_configs+=("$config")
+                fi
+                ;;
+              *)
+                echo "Unknown firmware family: $firmware_family"
+                exit 1
+                ;;
+            esac
+          done
+
+          if [ ${#selected_configs[@]} -eq 0 ]; then
+            echo "No configs matched firmware family: $firmware_family"
+            exit 1
+          fi
+
+          echo "Firmware family: $firmware_family"
+          echo "Selected ${#selected_configs[@]} configs."
           
           needs_build=()
           mkdir -p firmware
       
           if [[ "$force_build" == "true" ]]; then
-            echo "Force build enabled. Adding all configs."
-            needs_build=("${CONFIG_LIST[@]}")
+            echo "Force build enabled. Adding selected configs."
+            needs_build=("${selected_configs[@]}")
           else
-            for config in "${CONFIG_LIST[@]}"; do
+            for config in "${selected_configs[@]}"; do
               base=$(basename "$config" .yaml)
               expected="firmware/${base}-${version}.bin"
               if [[ ! -f "$expected" ]]; then
                 echo "$expected does not exist, will build."
                 needs_build+=("$config")
+              elif [[ "$track_source_versions" == "true" ]]; then
+                source_version=$(fetch_config_source_version "$config" master)
+                if [[ -z "$source_version" ]]; then
+                  echo "Could not determine source version for $config"
+                  exit 1
+                fi
+
+                stored_version=$(jq -r --arg config "$config" '.[$config] // empty' "$source_versions_file")
+                if [[ "$source_version" != "$stored_version" ]]; then
+                  echo "$config source version changed from ${stored_version:-<none>} to $source_version, will build."
+                  needs_build+=("$config")
+                else
+                  echo "$expected exists and source version $source_version is unchanged. Skipping build."
+                fi
               else
                 echo "$expected exists. Skipping build."
               fi
@@ -175,10 +242,12 @@ jobs:
           fi
 
           if [[ "$config_file" == circuitsetup-gdo-* ]]; then
-            url="https://raw.githubusercontent.com/CircuitSetup/circuitsetup-esphome/${gdo_branch}/${config_file}"
+            config_branch="$gdo_branch"
           else
-            url="https://raw.githubusercontent.com/CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter/${energy_meter_branch}/Software/ESPHome/${config_file}"
+            config_branch="$energy_meter_branch"
           fi
+
+          url=$(config_raw_url "$config_file" "$config_branch" download)
 
           echo "Downloading $config_file from $url"
           curl -fSL "$url" -o "$config_file"
@@ -228,6 +297,29 @@ jobs:
 
           mkdir -p manifests
           ruby ./scripts/update-espwebtools-manifests.rb
+
+      - name: Update source version snapshot
+        if: github.event.inputs.esphome_dev != 'true'
+        run: |
+          source scripts/configs.sh
+
+          config_file="${{ matrix.files }}"
+          source_version=$(fetch_config_source_version "$config_file" master)
+          if [[ -z "$source_version" ]]; then
+            echo "Could not determine source version for $config_file"
+            exit 1
+          fi
+
+          mkdir -p manifests
+          if [[ ! -f manifests/source_versions.json ]]; then
+            echo "{}" > manifests/source_versions.json
+          fi
+
+          tmp=$(mktemp)
+          jq --arg config "$config_file" --arg source_version "$source_version" \
+            '. + {($config): $source_version}' manifests/source_versions.json > "$tmp"
+          mv "$tmp" manifests/source_versions.json
+          echo "$config_file source version recorded as $source_version"
 
       - name: Commit firmware and manifest to repo
         run: |
