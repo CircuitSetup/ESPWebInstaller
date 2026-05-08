@@ -289,14 +289,22 @@ jobs:
           if not version_notes:
               raise SystemExit("No changelog entries with versions were found")
 
+          fallback_version = None
           if current_version and current_version not in version_notes:
-              raise SystemExit(f"Current version {current_version} not found in changelog")
+              fallback_version = version_order[0]
+              print(
+                  f"Current version {current_version} not found in changelog; "
+                  f"using top changelog entry {fallback_version}."
+              )
 
-          selected_versions = []
-          for version in version_order:
-              if last_version and version == last_version:
-                  break
-              selected_versions.append(version)
+          if fallback_version:
+              selected_versions = [fallback_version]
+          else:
+              selected_versions = []
+              for version in version_order:
+                  if last_version and version == last_version:
+                      break
+                  selected_versions.append(version)
 
           if not selected_versions:
               selected_versions = [current_version] if current_version else []
