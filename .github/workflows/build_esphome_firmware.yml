@@ -215,8 +215,7 @@ jobs:
           ESPHOME_VERSION: ${{ needs.determine-build.outputs.version }}
           ESPHOME_DEV: ${{ github.event.inputs.esphome_dev }}
         run: |
-          chmod +x scripts/build-firmware-batch.sh
-          ./scripts/build-firmware-batch.sh \
+          bash scripts/build-firmware-batch.sh \
             "${{ matrix.family }}" \
             "$FILES_JSON" \
             "$ESPHOME_VERSION" \
@@ -268,11 +267,8 @@ jobs:
             mv "$tmp" manifests/source_versions.json
           done
 
-      - name: Make generate-missing-manifests.sh executable
-        run: chmod +x scripts/generate-missing-manifests.sh
-
       - name: Generate any missing manifests
-        run: ./scripts/generate-missing-manifests.sh
+        run: bash scripts/generate-missing-manifests.sh
 
       - name: Prune old firmware and manifests
         run: |
