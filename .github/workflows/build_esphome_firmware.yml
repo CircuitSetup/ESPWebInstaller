@@ -465,9 +465,29 @@ jobs:
               continue
             fi
 
+            notes="Built with ESPHome ${ESPHOME_VERSION}"
+            if [[ "$config" == "circuitsetup-gdo-default.yaml" ]]; then
+              previous_tag=$(gh release list --repo "$repo" --limit 100 --json tagName,publishedAt \
+                | jq -r --arg prefix "${base}-v" \
+                  '[.[] | select(.tagName | startswith($prefix))] | sort_by(.publishedAt) | last | .tagName // empty')
+
+              if [[ -n "$previous_tag" ]]; then
+                current_gdolib=$(curl -fsSL "$(config_raw_url "$config" "$branch" version)" \
+                  | bash scripts/gdolib-release-notes.sh --extract)
+                previous_gdolib=$(curl -fsSL \
+                  "https://raw.githubusercontent.com/${repo}/${previous_tag}/${CONFIG_VERSION_PATH[$config]}" \
+                  | bash scripts/gdolib-release-notes.sh --extract)
+
+                if [[ -n "$current_gdolib" && -n "$previous_gdolib" ]]; then
+                  gdolib_notes=$(bash scripts/gdolib-release-notes.sh "$previous_gdolib" "$current_gdolib")
+                  [[ -n "$gdolib_notes" ]] && notes+=$'\n\n'"$gdolib_notes"
+                fi
+              fi
+            fi
+
             gh release create "$tag" "$binary" \
               --repo "$repo" \
               --title "$friendly v${project_version} - ESPHome v${ESPHOME_VERSION}" \
-              --notes "Built with ESPHome ${ESPHOME_VERSION}" \
+              --notes "$notes" \
               --generate-notes
           done
