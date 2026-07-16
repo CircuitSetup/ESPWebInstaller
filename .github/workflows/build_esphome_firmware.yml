@@ -59,7 +59,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: 'pip'
           cache-dependency-path: requirements.txt
 
@@ -254,7 +254,7 @@ jobs:
 
       - name: Build firmware
         id: build
-        uses: esphome/build-action@v7
+        uses: esphome/build-action@v7.4.0
         with:
           yaml-file: ${{ matrix.files }}
           version: ${{ github.event.inputs.esphome_dev == 'true' && 'dev' || needs.determine-build.outputs.version }}
