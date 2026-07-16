@@ -21,6 +21,6 @@
   "6chan_energy_meter_main_board.yaml": "1.7",
   "6chan_energy_meter_main_ethernet.yaml": "1.7",
   "6chan_energy_meter_main_ethernet_waveshare.yaml": "1.7",
-  "circuitsetup-gdo-default.yaml": "1.5.5",
+  "circuitsetup-gdo-default.yaml": "1.5.6",
   "circuitsetup-gdo-dry-contact.yaml": "1.1"
 }
