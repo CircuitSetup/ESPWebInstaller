@@ -54,10 +54,10 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5.6.0
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: 'pip'
@@ -204,7 +204,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v7
         with:
           persist-credentials: true
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -322,6 +322,7 @@ jobs:
           echo "$config_file source version recorded as $source_version"
 
       - name: Commit firmware and manifest to repo
+        if: github.event_name != 'pull_request'
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "github-actions@github.com"
@@ -352,7 +353,7 @@ jobs:
           done
 
       - name: Check for new release
-        if: matrix.files == 'circuitsetup-gdo-default.yaml' || matrix.files == 'circuitsetup-gdo-dry-contact.yaml'
+        if: github.event_name != 'pull_request' && (matrix.files == 'circuitsetup-gdo-default.yaml' || matrix.files == 'circuitsetup-gdo-dry-contact.yaml')
         id: release
         run: |
           repo="CircuitSetup/circuitsetup-esphome"
@@ -384,7 +385,7 @@ jobs:
 
       - name: Create release on circuitsetup-esphome
         if: steps.release.outputs.should_release == 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           repository: CircuitSetup/circuitsetup-esphome
           token: ${{ secrets.RELEASE_TOKEN }}
@@ -400,11 +401,11 @@ jobs:
   generate-index:
     runs-on: ubuntu-latest
     needs: [determine-build, build-firmware]
-    if: github.event.inputs.generate_json_only == 'true' || needs.determine-build.outputs.files != '[]'
+    if: github.event_name != 'pull_request' && (github.event.inputs.generate_json_only == 'true' || needs.determine-build.outputs.files != '[]')
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Pull latest firmware artifacts
