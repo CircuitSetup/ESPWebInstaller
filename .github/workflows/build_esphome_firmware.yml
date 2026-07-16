@@ -50,6 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       files: ${{ steps.set-files.outputs.files }}
+      families: ${{ steps.set-files.outputs.families }}
       version: ${{ steps.esphome_version.outputs.version }}
 
     steps:
@@ -190,7 +191,9 @@ jobs:
             json=$(printf '%s\n' "${needs_build[@]}" | jq -R . | jq -cs .)
           fi
 
+          families=$(jq -c 'map(if startswith("circuitsetup-gdo-") then "gdo" else "energy_meter" end) | unique' <<< "$json")
           echo "files=$json" >> $GITHUB_OUTPUT
+          echo "families=$families" >> $GITHUB_OUTPUT
 
   build-firmware:
     needs: determine-build
@@ -198,205 +201,33 @@ jobs:
     if: needs.determine-build.outputs.files != '[]' && github.event.inputs.generate_json_only != 'true'
 
     strategy:
-      max-parallel: 1
+      fail-fast: false
       matrix:
-        files: ${{ fromJson(needs.determine-build.outputs.files) }}
+        family: ${{ fromJson(needs.determine-build.outputs.families) }}
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v7
+
+      - name: Build ${{ matrix.family }} firmware
+        env:
+          FILES_JSON: ${{ needs.determine-build.outputs.files }}
+          ESPHOME_VERSION: ${{ needs.determine-build.outputs.version }}
+          ESPHOME_DEV: ${{ github.event.inputs.esphome_dev }}
+        run: |
+          chmod +x scripts/build-firmware-batch.sh
+          ./scripts/build-firmware-batch.sh \
+            "${{ matrix.family }}" \
+            "$FILES_JSON" \
+            "$ESPHOME_VERSION" \
+            "${ESPHOME_DEV:-false}"
+
+      - name: Upload ${{ matrix.family }} firmware
+        uses: actions/upload-artifact@v7.0.1
         with:
-          persist-credentials: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Download ESPHome Config File
-        run: |
-          source scripts/configs.sh
-      
-          config_file="${{ matrix.files }}"
-      
-          check_branch_exists() {
-            repo="$1"
-            branch="$2"
-            http_status=$(curl -s -o /dev/null -w "%{http_code}" "https://api.github.com/repos/${repo}/branches/${branch}")
-            if [ "$http_status" == "200" ]; then
-              echo "true"
-            else
-              echo "false"
-            fi
-          }
-
-          if [ "${{ github.event.inputs.esphome_dev }}" == "true" ]; then
-            gdo_branch="dev"
-            energy_meter_branch="dev"
-
-            if [ "$(check_branch_exists CircuitSetup/circuitsetup-esphome dev)" != "true" ]; then
-              gdo_branch="master"
-            fi
-            if [ "$(check_branch_exists CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter dev)" != "true" ]; then
-              energy_meter_branch="master"
-            fi
-          else
-            gdo_branch="master"
-            energy_meter_branch="master"
-          fi
-
-          if [[ "$config_file" == circuitsetup-gdo-* ]]; then
-            config_branch="$gdo_branch"
-          else
-            config_branch="$energy_meter_branch"
-          fi
-
-          url=$(config_raw_url "$config_file" "$config_branch" download)
-
-          echo "Downloading $config_file from $url"
-          curl -fSL "$url" -o "$config_file"
-
-      - name: Build firmware
-        id: build
-        uses: esphome/build-action@v7.4.0
-        with:
-          yaml-file: ${{ matrix.files }}
-          version: ${{ github.event.inputs.esphome_dev == 'true' && 'dev' || needs.determine-build.outputs.version }}
-
-      - name: Move compiled binary
-        id: firmware
-        run: |
-          version="${{ needs.determine-build.outputs.version }}"
-          build_name="${{ steps.build.outputs.name }}"
-          filename=$(basename "${{ matrix.files }}" .yaml)-${version}.bin
-          mkdir -p firmware
-          mv "$build_name/$build_name.factory.bin" "firmware/${filename}"
-          echo "filename=$filename" >> $GITHUB_OUTPUT
-
-      - name: Build Manifest
-        run: |
-          source scripts/configs.sh
-          version="${{ needs.determine-build.outputs.version }}"
-          filename="${{ steps.firmware.outputs.filename }}"
-          config_file="${{ matrix.files }}"
-
-          matched_entry="${CONFIG_META[$config_file]}"
-          if [ -z "$matched_entry" ]; then
-            echo "No manifest mapping found for $config_file. Skipping."
-            exit 0
-          fi
-
-          IFS="|" read -r name mcu <<< "$matched_entry"
-          manifest_name="manifest_$(basename "$config_file" .yaml)-${version}.json"
-
-          export MANIFEST_NAME="$name"
-          export MANIFEST_FNAME="$manifest_name"
-          export MANIFEST_VERSION="$version"
-
-          if [[ "$mcu" == "ESP32_S3" ]]; then
-            export ESP32_S3_IMAGE_URI="https://circuitsetup.github.io/ESPWebInstaller/firmware/$filename"
-          else
-            export ESP32_IMAGE_URI="https://circuitsetup.github.io/ESPWebInstaller/firmware/$filename"
-          fi
-
-          mkdir -p manifests
-          ruby ./scripts/update-espwebtools-manifests.rb
-
-      - name: Update source version snapshot
-        if: github.event.inputs.esphome_dev != 'true'
-        run: |
-          source scripts/configs.sh
-
-          config_file="${{ matrix.files }}"
-          source_version=$(fetch_config_source_version "$config_file" master)
-          if [[ -z "$source_version" ]]; then
-            echo "Could not determine source version for $config_file"
-            exit 1
-          fi
-
-          mkdir -p manifests
-          if [[ ! -f manifests/source_versions.json ]]; then
-            echo "{}" > manifests/source_versions.json
-          fi
-
-          tmp=$(mktemp)
-          jq --arg config "$config_file" --arg source_version "$source_version" \
-            '. + {($config): $source_version}' manifests/source_versions.json > "$tmp"
-          mv "$tmp" manifests/source_versions.json
-          echo "$config_file source version recorded as $source_version"
-
-      - name: Commit firmware and manifest to repo
-        if: github.event_name != 'pull_request'
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "github-actions@github.com"
-          git fetch origin main
-          git checkout main
-      
-          git add firmware
-          git add manifests
-      
-          if git diff --cached --quiet; then
-            echo "⚠️ No changes to commit."
-            exit 0
-          fi
-      
-          git commit -m "Add firmware and manifest for ${{ matrix.files }}"
-      
-          attempts=0
-          max_attempts=5
-      
-          until git pull --rebase origin main && git push origin HEAD:main; do
-            attempts=$((attempts+1))
-            if [ $attempts -ge $max_attempts ]; then
-              echo "❌ Max push attempts reached, exiting with failure."
-              exit 1
-            fi
-            echo "⚠️ Push failed due to remote update. Retrying in 10 seconds... (attempt $attempts of $max_attempts)"
-            sleep 10
-          done
-
-      - name: Check for new release
-        if: github.event_name != 'pull_request' && (matrix.files == 'circuitsetup-gdo-default.yaml' || matrix.files == 'circuitsetup-gdo-dry-contact.yaml')
-        id: release
-        run: |
-          repo="CircuitSetup/circuitsetup-esphome"
-          esphome_version="${{ needs.determine-build.outputs.version }}"
-          config="${{ matrix.files }}"
-          if [ "$config" = "circuitsetup-gdo-default.yaml" ]; then
-            base="circuitsetup-secplus-garage-door-opener"
-            friendly="CircuitSetup Security+ Garage Door Opener"
-            version=$(curl -s "https://raw.githubusercontent.com/${repo}/master/${base}.yaml" \
-              | grep 'project_version:' \
-              | sed 's/.*"\([^\"]*\)".*/\1/')
-          else
-            base="circuitsetup-gdo-dry-contact"
-            friendly="CircuitSetup Garage Door Opener Dry Contact"
-            version=$(grep 'project_version:' "$config" | sed 's/.*"\([^\"]*\)".*/\1/')
-          fi
-          tag="${base}-v${version}-esphome-v${esphome_version}"
-          status=$(curl -s -o /dev/null -w "%{http_code}" "https://api.github.com/repos/${repo}/releases/tags/${tag}")
-          if [ "$status" = "200" ]; then
-            echo "Release $tag already exists. Skipping."
-            echo "should_release=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          echo "should_release=true" >> $GITHUB_OUTPUT
-          echo "tag=$tag" >> $GITHUB_OUTPUT
-          echo "friendly=$friendly" >> $GITHUB_OUTPUT
-          echo "version=$version" >> $GITHUB_OUTPUT
-          echo "esphome_version=$esphome_version" >> $GITHUB_OUTPUT
-
-      - name: Create release on circuitsetup-esphome
-        if: steps.release.outputs.should_release == 'true'
-        uses: softprops/action-gh-release@v3
-        with:
-          repository: CircuitSetup/circuitsetup-esphome
-          token: ${{ secrets.RELEASE_TOKEN }}
-          tag_name: ${{ steps.release.outputs.tag }}
-          name: ${{ steps.release.outputs.friendly }} v${{ steps.release.outputs.version }} - ESPHome v${{ steps.release.outputs.esphome_version }}
-          body: Built with ESPHome ${{ steps.release.outputs.esphome_version }}
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-          files: firmware/${{ steps.firmware.outputs.filename }}
-          fail_on_unmatched_files: true
+          name: firmware-${{ matrix.family }}
+          path: batch-output/${{ matrix.family }}
+          if-no-files-found: error
 
   generate-index:
     runs-on: ubuntu-latest
@@ -410,6 +241,32 @@ jobs:
           fetch-depth: 0
       - name: Pull latest firmware artifacts
         run: git pull origin main
+
+      - name: Download compiled firmware
+        if: github.event.inputs.generate_json_only != 'true'
+        uses: actions/download-artifact@v8.0.1
+        with:
+          pattern: firmware-*
+          path: batch-output
+          merge-multiple: true
+
+      - name: Stage compiled firmware
+        if: github.event.inputs.generate_json_only != 'true'
+        run: |
+          mkdir -p firmware manifests
+          cp -a batch-output/firmware/. firmware/
+          cp -a batch-output/manifests/. manifests/
+
+          if [[ ! -f manifests/source_versions.json ]]; then
+            echo '{}' > manifests/source_versions.json
+          fi
+
+          for snapshot in batch-output/*-source_versions.json; do
+            [ -e "$snapshot" ] || continue
+            tmp=$(mktemp)
+            jq -s '.[0] * .[1]' manifests/source_versions.json "$snapshot" > "$tmp"
+            mv "$tmp" manifests/source_versions.json
+          done
 
       - name: Make generate-missing-manifests.sh executable
         run: chmod +x scripts/generate-missing-manifests.sh
@@ -550,16 +407,71 @@ jobs:
 
           echo "]" >> manifests/firmware_index.json
 
-      - name: Commit pruned firmware, manifests, and firmware index
+      - name: Commit firmware, manifests, and firmware index
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "github-actions@github.com"
-          git pull origin main
           git add -A firmware manifests
 
           if git diff --cached --quiet; then
-            echo "⚠️ No changes to commit."
+            echo "No changes to commit."
           else
-            git commit -m "Prune old firmware and update manifests"
-            git push origin HEAD:main
+            git commit -m "Build ESPHome firmware ${{ needs.determine-build.outputs.version }} [skip ci]"
+
+            attempts=0
+            max_attempts=5
+            until git pull --rebase origin main && git push origin HEAD:main; do
+              attempts=$((attempts+1))
+              if [ $attempts -ge $max_attempts ]; then
+                echo "Max push attempts reached, exiting with failure."
+                exit 1
+              fi
+              echo "Push failed due to remote update. Retrying in 10 seconds... (attempt $attempts of $max_attempts)"
+              sleep 10
+            done
           fi
+
+      - name: Create GDO releases
+        if: github.event.inputs.generate_json_only != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          ESPHOME_DEV: ${{ github.event.inputs.esphome_dev }}
+          ESPHOME_VERSION: ${{ needs.determine-build.outputs.version }}
+          FILES_JSON: ${{ needs.determine-build.outputs.files }}
+        run: |
+          source scripts/configs.sh
+
+          repo="CircuitSetup/circuitsetup-esphome"
+          branch="master"
+          if [[ "${ESPHOME_DEV:-false}" == "true" ]]; then
+            status=$(curl -s -o /dev/null -w "%{http_code}" "https://api.github.com/repos/${repo}/branches/dev")
+            [[ "$status" == "200" ]] && branch="dev"
+          fi
+
+          for config in circuitsetup-gdo-default.yaml circuitsetup-gdo-dry-contact.yaml; do
+            jq -e --arg config "$config" 'index($config) != null' <<< "$FILES_JSON" >/dev/null || continue
+            binary="firmware/${config%.yaml}-${ESPHOME_VERSION}.bin"
+            [[ -f "$binary" ]] || continue
+
+            if [[ "$config" == "circuitsetup-gdo-default.yaml" ]]; then
+              base="circuitsetup-secplus-garage-door-opener"
+              friendly="CircuitSetup Security+ Garage Door Opener"
+              project_version=$(fetch_config_source_version "$config" master)
+            else
+              base="circuitsetup-gdo-dry-contact"
+              friendly="CircuitSetup Garage Door Opener Dry Contact"
+              project_version=$(fetch_config_source_version "$config" "$branch")
+            fi
+
+            tag="${base}-v${project_version}-esphome-v${ESPHOME_VERSION}"
+            if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
+              echo "Release $tag already exists. Skipping."
+              continue
+            fi
+
+            gh release create "$tag" "$binary" \
+              --repo "$repo" \
+              --title "$friendly v${project_version} - ESPHome v${ESPHOME_VERSION}" \
+              --notes "Built with ESPHome ${ESPHOME_VERSION}" \
+              --generate-notes
+          done
