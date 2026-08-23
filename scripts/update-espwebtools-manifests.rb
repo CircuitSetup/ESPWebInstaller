@@ -4,6 +4,7 @@ require 'json'
 manifest = {
   name: ENV['MANIFEST_NAME'],
   version: ENV['MANIFEST_VERSION'],
+  home_assistant_domain: 'esphome',
   builds: []
 }
 
