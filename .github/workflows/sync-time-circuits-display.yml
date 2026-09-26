@@ -107,7 +107,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add README.md AddOns.md CheatSheet.pdf img Software/src
+          git add README.md AddOns.md CheatSheet.pdf img Software/platformio.ini Software/src
 
           if git diff --cached --quiet; then
             echo "commit_sha=" >> "${GITHUB_OUTPUT}"

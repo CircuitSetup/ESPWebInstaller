@@ -64,6 +64,16 @@ FORBIDDEN_README_URLS = (
     "https://github.com/realA10001986/Dash-Gauges/blob/main/hardware/README.md#connecting-a-tcd-to-the-dash-gauges-by-wire",
 )
 
+PLATFORMIO_MACRO_RENAMES = (
+    ("TC_HAVEGPS", "HAVE_GPS"),
+    ("TC_HAVELIGHT", "HAVE_LIGHT"),
+    ("TC_HAVETEMP", "HAVE_TEMP"),
+    ("TC_HAVE_RE", "HAVE_RE"),
+    ("TC_HAVE_REMOTE", "HAVE_REMOTE"),
+    ("TC_HAVEMQTT", "HAVE_MQTT"),
+    ("IS_ACAR_DISPLAY", "ACAR_DISPLAY"),
+)
+
 
 @dataclass
 class SyncSummary:
@@ -222,6 +232,12 @@ def parse_platformio_build_macros(platformio_text: str) -> set[str]:
     return macros
 
 
+def normalize_platformio(platformio_text: str) -> str:
+    for old, new in PLATFORMIO_MACRO_RENAMES:
+        platformio_text = platformio_text.replace(old, new)
+    return platformio_text
+
+
 def comment_out_define(text: str, macro: str) -> str:
     pattern = re.compile(rf"(?m)^([ \t]*)#define[ \t]+{re.escape(macro)}(\b.*)$")
     return pattern.sub(rf"\1//#define {macro}\2", text)
@@ -324,11 +340,16 @@ def sync_source_tree(source_root: Path, target_root: Path, dry_run: bool, summar
                 dst.unlink()
             summary.note_result((TARGET_SRC_SUBDIR / rel).as_posix(), True)
 
-    tc_global_path = target_src_dir / "tc_global.h"
     platformio_path = target_root / "Software" / "platformio.ini"
-    normalized = normalize_tc_global(read_text(tc_global_path), read_text(platformio_path))
+    platformio_text = normalize_platformio(read_text(platformio_path))
+    changed = write_text_if_changed(platformio_path, platformio_text, dry_run)
+    summary.note_result("Software/platformio.ini", changed)
+
+    tc_global_path = target_src_dir / "tc_global.h"
+    normalized = normalize_tc_global(read_text(tc_global_path), platformio_text)
     changed = write_text_if_changed(tc_global_path, normalized, dry_run)
     summary.note_result((TARGET_SRC_SUBDIR / "tc_global.h").as_posix(), changed)
+    summary.validations.append("platformio.ini build flags normalized")
     summary.validations.append("tc_global.h build-flag defines normalized and V_A10001986 commented out")
 
 
