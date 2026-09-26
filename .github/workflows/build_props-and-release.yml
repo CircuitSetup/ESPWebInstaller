@@ -2,6 +2,12 @@ name: Build and Deploy Props Firmware
 
 on:
   workflow_dispatch:
+    inputs:
+      refresh_tcd_release:
+        description: Rebuild and replace the existing TCD release assets
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -111,12 +117,27 @@ jobs:
           LAST_VERSION="${{ steps.latest_release.outputs.latest_tag }}"
 
           if [ "$CURRENT_VERSION" == "$LAST_VERSION" ]; then
-            echo "⚠️ Firmware version has not changed ($CURRENT_VERSION). Stopping job."
-            echo "should_build=false" >> "$GITHUB_OUTPUT"
+            if [ "${{ inputs.refresh_tcd_release }}" == "true" ] && [ "${{ matrix.name }}" == "Time Circuits Display" ]; then
+              echo "🔄 Refreshing existing TCD release $CURRENT_VERSION."
+              echo "should_build=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "⚠️ Firmware version has not changed ($CURRENT_VERSION). Stopping job."
+              echo "should_build=false" >> "$GITHUB_OUTPUT"
+            fi
           else
             echo "✅ New firmware version detected: $CURRENT_VERSION"
             echo "should_build=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Checkout latest TCD sound pack
+        if: steps.check_version.outputs.should_build == 'true' && matrix.name == 'Time Circuits Display'
+        uses: actions/checkout@v7
+        with:
+          repository: realA10001986/buildac
+          ref: master
+          token: ${{ secrets.RELEASE_TOKEN }}
+          path: buildac
+          fetch-depth: 1
           
       - name: Set up Python
         if: steps.check_version.outputs.should_build == 'true'
@@ -187,12 +208,21 @@ jobs:
           install_dir="target_repo/${{ matrix.install_path }}"
           firmware_dir="target_repo/firmware/${{ matrix.name }}"
 
+          if [ "${{ matrix.name }}" == "Time Circuits Display" ]; then
+            install_dir="buildac"
+          fi
+
           if [ ! -d "$install_dir" ]; then
             echo "❌ Install directory not found: $install_dir"
             exit 1
           fi
 
-          zip_path=$(find "$install_dir" -maxdepth 1 -type f -name 'sound-pack-*.zip' | sort -V | tail -n 1)
+          if [ "${{ matrix.name }}" == "Time Circuits Display" ]; then
+            zip_path=$(find "$install_dir" -maxdepth 1 -type f -name 'sound-pack-cs*.zip' | sort -V | tail -n 1)
+          else
+            zip_path=$(find "$install_dir" -maxdepth 1 -type f -name 'sound-pack-*.zip' | sort -V | tail -n 1)
+          fi
+
           if [ -z "$zip_path" ]; then
             echo "❌ No sound-pack zip found in $install_dir"
             exit 1
