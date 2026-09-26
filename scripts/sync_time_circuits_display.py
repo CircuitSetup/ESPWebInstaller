@@ -307,13 +307,22 @@ def sync_source_tree(source_root: Path, target_root: Path, dry_run: bool, summar
     ensure_exists(src_dir, f"source firmware directory `{SOURCE_REPO_SUBDIR}`")
     ensure_exists(target_src_dir, f"target firmware directory `{TARGET_SRC_SUBDIR.as_posix()}`")
 
+    source_relpaths: set[Path] = set()
     for src in sorted(path for path in src_dir.rglob("*") if path.is_file()):
         rel = src.relative_to(src_dir)
         if rel.name == "timecircuits-A10001986.ino":
             rel = rel.with_name("timecircuits.ino")
+        source_relpaths.add(rel)
         dst = target_src_dir / rel
         changed = copy_file_if_changed(src, dst, dry_run)
         summary.note_result((TARGET_SRC_SUBDIR / rel).as_posix(), changed)
+
+    for dst in sorted(path for path in target_src_dir.rglob("*") if path.is_file()):
+        rel = dst.relative_to(target_src_dir)
+        if rel not in source_relpaths:
+            if not dry_run:
+                dst.unlink()
+            summary.note_result((TARGET_SRC_SUBDIR / rel).as_posix(), True)
 
     tc_global_path = target_src_dir / "tc_global.h"
     platformio_path = target_root / "Software" / "platformio.ini"
