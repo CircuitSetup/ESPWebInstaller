@@ -222,7 +222,7 @@ jobs:
             "${ESPHOME_DEV:-false}"
 
       - name: Upload ${{ matrix.family }} firmware
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: firmware-${{ matrix.family }}
           path: batch-output/${{ matrix.family }}
@@ -243,7 +243,7 @@ jobs:
 
       - name: Download compiled firmware
         if: github.event.inputs.generate_json_only != 'true'
-        uses: actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@v8.0.2
         with:
           pattern: firmware-*
           path: batch-output
