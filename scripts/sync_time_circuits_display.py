@@ -235,7 +235,12 @@ def parse_platformio_build_macros(platformio_text: str) -> set[str]:
 def normalize_platformio(platformio_text: str) -> str:
     for old, new in PLATFORMIO_MACRO_RENAMES:
         platformio_text = platformio_text.replace(old, new)
-    return platformio_text
+    # Keep the Arduino 2.x toolchain used by the last successful sync build.
+    return re.sub(
+        r"(?m)^([ \t]*platform[ \t]*=[ \t]*)(?:platformio/)?espressif32(?=[ \t]*(?:[;#]|$))",
+        r"\1platformio/espressif32@7.1.3",
+        platformio_text,
+    )
 
 
 def comment_out_define(text: str, macro: str) -> str:
@@ -349,7 +354,7 @@ def sync_source_tree(source_root: Path, target_root: Path, dry_run: bool, summar
     normalized = normalize_tc_global(read_text(tc_global_path), platformio_text)
     changed = write_text_if_changed(tc_global_path, normalized, dry_run)
     summary.note_result((TARGET_SRC_SUBDIR / "tc_global.h").as_posix(), changed)
-    summary.validations.append("platformio.ini build flags normalized")
+    summary.validations.append("platformio.ini toolchain and build flags normalized")
     summary.validations.append("tc_global.h build-flag defines normalized and V_A10001986 commented out")
 
 
