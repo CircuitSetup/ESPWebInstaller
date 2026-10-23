@@ -212,40 +212,7 @@ jobs:
             install_dir="buildac"
           fi
 
-          if [ ! -d "$install_dir" ]; then
-            echo "❌ Install directory not found: $install_dir"
-            exit 1
-          fi
-
-          if [ "${{ matrix.name }}" == "Time Circuits Display" ]; then
-            zip_path=$(find "$install_dir" -maxdepth 1 -type f -name 'sound-pack-cs*.zip' | sort -V | tail -n 1)
-          else
-            zip_path=$(find "$install_dir" -maxdepth 1 -type f -name 'sound-pack-*.zip' | sort -V | tail -n 1)
-          fi
-
-          if [ -z "$zip_path" ]; then
-            echo "❌ No sound-pack zip found in $install_dir"
-            exit 1
-          fi
-
-          echo "📦 Extracting sound pack from $zip_path"
-          extract_dir=$(mktemp -d)
-          unzip -q "$zip_path" -d "$extract_dir"
-
-          mapfile -t sound_bins < <(find "$extract_dir" -type f -name '*.bin' ! -path '*/__MACOSX/*' | sort)
-          if [ "${#sound_bins[@]}" -eq 0 ]; then
-            echo "❌ No .bin file found inside $zip_path"
-            exit 1
-          fi
-
-          if [ "${#sound_bins[@]}" -ne 1 ]; then
-            echo "❌ Expected exactly one .bin inside $zip_path, found ${#sound_bins[@]}"
-            printf '%s\n' "${sound_bins[@]}"
-            exit 1
-          fi
-
-          cp "${sound_bins[0]}" "$firmware_dir/"
-          echo "✅ Added extracted sound-pack binary $(basename "${sound_bins[0]}") to $firmware_dir"
+          python scripts/extract_prop_sound_pack.py "$install_dir" "$firmware_dir" "${{ matrix.name }}"
 
       - name: Create Release on Target Repo
         if: steps.check_version.outputs.should_build == 'true'

@@ -24,9 +24,8 @@ class PropsWorkflowContractTest(unittest.TestCase):
         self.assertIn("token: ${{ secrets.RELEASE_TOKEN }}", self.workflow)
         self.assertIn("path: buildac", self.workflow)
 
-    def test_tcd_release_uses_latest_circuitsetup_sound_pack(self) -> None:
+    def test_tcd_release_uses_private_sound_pack_directory(self) -> None:
         self.assertIn('install_dir="buildac"', self.workflow)
-        self.assertIn("-name 'sound-pack-cs*.zip'", self.workflow)
 
 
 if __name__ == "__main__":
