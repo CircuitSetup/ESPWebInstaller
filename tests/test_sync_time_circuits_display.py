@@ -1,3 +1,4 @@
+from configparser import ConfigParser
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -103,6 +104,42 @@ class SyncSourceTreeTest(unittest.TestCase):
         sync_source_tree(self.source, self.target, True, summary)
 
         self.assertEqual(platformio.read_text(), "-DTC_HAVEGPS\n")
+        self.assertIn("Software/platformio.ini", summary.updated_files)
+
+    def test_pins_floating_esp32_platforms_and_preserves_explicit_versions(self) -> None:
+        platformio = self.target / "Software" / "platformio.ini"
+        platformio.write_text(
+            "[env]\nplatform = platformio/espressif32\nframework = arduino\n"
+            "[env:bare]\nplatform=espressif32 ; keep this comment\n"
+            "[env:pinned]\nplatform = platformio/espressif32@6.12.0\n"
+            "[env:other]\nplatform = espressif8266\n"
+        )
+        summary = SyncSummary(dry_run=False)
+
+        sync_source_tree(self.source, self.target, False, summary)
+
+        config = ConfigParser(inline_comment_prefixes=(";", "#"))
+        config.read(platformio)
+        self.assertEqual(config["env"]["platform"], "platformio/espressif32@7.1.3")
+        self.assertEqual(config["env:bare"]["platform"], "platformio/espressif32@7.1.3")
+        self.assertEqual(config["env:pinned"]["platform"], "platformio/espressif32@6.12.0")
+        self.assertEqual(config["env:other"]["platform"], "espressif8266")
+        self.assertEqual(config["env"]["framework"], "arduino")
+        self.assertIn("; keep this comment", platformio.read_text())
+        self.assertIn("Software/platformio.ini", summary.updated_files)
+        second_summary = SyncSummary(dry_run=False)
+        sync_source_tree(self.source, self.target, False, second_summary)
+        self.assertNotIn("Software/platformio.ini", second_summary.updated_files)
+
+    def test_dry_run_reports_platform_pin_without_writing_platformio(self) -> None:
+        platformio = self.target / "Software" / "platformio.ini"
+        original = "[env]\nplatform = platformio/espressif32\n"
+        platformio.write_text(original)
+        summary = SyncSummary(dry_run=True)
+
+        sync_source_tree(self.source, self.target, True, summary)
+
+        self.assertEqual(platformio.read_text(), original)
         self.assertIn("Software/platformio.ini", summary.updated_files)
 
 
