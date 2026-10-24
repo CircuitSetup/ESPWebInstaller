@@ -207,12 +207,14 @@ jobs:
         run: |
           install_dir="target_repo/${{ matrix.install_path }}"
           firmware_dir="target_repo/firmware/${{ matrix.name }}"
+          sound_pack_args=()
 
           if [ "${{ matrix.name }}" == "Time Circuits Display" ]; then
             install_dir="buildac"
+            sound_pack_args=(--tcd-settings target_repo/Software/src/tc_settings.cpp)
           fi
 
-          python scripts/extract_prop_sound_pack.py "$install_dir" "$firmware_dir" "${{ matrix.name }}"
+          python scripts/extract_prop_sound_pack.py "$install_dir" "$firmware_dir" "${{ matrix.name }}" "${sound_pack_args[@]}"
 
       - name: Create Release on Target Repo
         if: steps.check_version.outputs.should_build == 'true'

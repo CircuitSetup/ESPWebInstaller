@@ -26,6 +26,7 @@ class PropsWorkflowContractTest(unittest.TestCase):
 
     def test_tcd_release_uses_private_sound_pack_directory(self) -> None:
         self.assertIn('install_dir="buildac"', self.workflow)
+        self.assertIn('--tcd-settings target_repo/Software/src/tc_settings.cpp', self.workflow)
 
 
 if __name__ == "__main__":
