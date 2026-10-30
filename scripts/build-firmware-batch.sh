@@ -59,6 +59,9 @@ if [[ "$esphome_dev" == "true" ]]; then
   image_version="dev"
   check_branch_exists CircuitSetup/circuitsetup-esphome dev && gdo_branch="dev"
   check_branch_exists CircuitSetup/Expandable-6-Channel-ESP32-Energy-Meter dev && energy_meter_branch="dev"
+elif [[ "$family" == "gdo" ]]; then
+  gdo_branch=$(git ls-remote https://github.com/CircuitSetup/circuitsetup-esphome.git refs/heads/master | cut -f1)
+  [[ "$gdo_branch" =~ ^[0-9a-f]{40}$ ]] || { echo "Could not resolve GDO source commit" >&2; exit 1; }
 fi
 
 image="ghcr.io/esphome/esphome:$image_version"
@@ -95,6 +98,13 @@ for config_file in "${configs[@]}"; do
   url="$(config_raw_url "$config_file" "$config_branch" download)"
   echo "Downloading $config_file from $url"
   curl -fSL "$url" -o "$config_path"
+
+  if [[ "$esphome_dev" != "true" ]]; then
+    source_state=$(config_source_state "$config_file" "$config_branch" < "$config_path")
+    if [[ "$family" == "gdo" ]]; then
+      prepare_gdo_config "$config_path" "$source_state"
+    fi
+  fi
 
   echo "::group::Compile $config_file"
   docker "${docker_args[@]}" "$image" compile "$config_path"
@@ -141,16 +151,10 @@ for config_file in "${configs[@]}"; do
   )
 
   if [[ "$esphome_dev" != "true" ]]; then
-    source_version="$(fetch_config_source_version "$config_file" master)"
-    if [[ -z "$source_version" ]]; then
-      echo "Could not determine source version for $config_file" >&2
-      exit 1
-    fi
-
     snapshot="$output_dir/${family}-source_versions.json"
     tmp="$(mktemp)"
-    jq --arg config "$config_file" --arg source_version "$source_version" \
-      '. + {($config): $source_version}' "$snapshot" > "$tmp"
+    jq --arg config "$config_file" --argjson source_state "$source_state" \
+      '. + {($config): $source_state}' "$snapshot" > "$tmp"
     mv "$tmp" "$snapshot"
   fi
 done

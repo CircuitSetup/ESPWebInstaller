@@ -36,6 +36,7 @@ on:
         required: false
         default: 'false'
   schedule:
+    - cron: '17 * * * *'
     - cron: '0 6 * * 1,4'
 
 permissions:
@@ -43,7 +44,7 @@ permissions:
 
 concurrency:
   group: build_esphome_firmware
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   determine-build:
@@ -75,6 +76,9 @@ jobs:
             pip3 install esphome
           fi
 
+      - name: Test firmware automation
+        run: python3 -m unittest discover -s tests -q
+
       - name: Get ESPHome version
         id: esphome_version
         run: |
@@ -84,7 +88,10 @@ jobs:
 
       - name: Determine firmware needing build
         id: set-files
+        env:
+          FIRMWARE_FAMILY: ${{ inputs.firmware_family || (github.event.schedule == '17 * * * *' && 'gdo') || 'all' }}
         run: |
+          set -euo pipefail
           source ./scripts/configs.sh
 
           required_waveshare_configs=(
@@ -107,8 +114,7 @@ jobs:
           version="${{ steps.esphome_version.outputs.version }}"
           force_build="${{ github.event.inputs.force_build }}"
           force_build="${force_build:-false}"
-          firmware_family="${{ github.event.inputs.firmware_family }}"
-          firmware_family="${firmware_family:-all}"
+          firmware_family="$FIRMWARE_FAMILY"
           source_versions_file="manifests/source_versions.json"
           track_source_versions="true"
 
@@ -166,13 +172,10 @@ jobs:
                 echo "$expected does not exist, will build."
                 needs_build+=("$config")
               elif [[ "$track_source_versions" == "true" ]]; then
-                source_version=$(fetch_config_source_version "$config" master)
-                if [[ -z "$source_version" ]]; then
-                  echo "Could not determine source version for $config"
-                  exit 1
-                fi
-
-                stored_version=$(jq -r --arg config "$config" '.[$config] // empty' "$source_versions_file")
+                source_state=$(fetch_config_source_state "$config" master)
+                source_version=$(source_state_version "$config" "$source_state")
+                stored_state=$(jq -c --arg config "$config" '.[$config] // null' "$source_versions_file")
+                stored_version=$(source_state_version "$config" "$stored_state")
                 if [[ "$source_version" != "$stored_version" ]]; then
                   echo "$config source version changed from ${stored_version:-<none>} to $source_version, will build."
                   needs_build+=("$config")
@@ -409,6 +412,14 @@ jobs:
       - name: Verify Energy Meter installer contract
         run: python3 -m unittest tests/test_energy_meter_installer_contract.py
 
+      - name: Create GDO releases
+        if: github.event.inputs.generate_json_only != 'true' && github.event.inputs.esphome_dev != 'true' && contains(fromJson(needs.determine-build.outputs.families), 'gdo')
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          ESPHOME_VERSION: ${{ needs.determine-build.outputs.version }}
+          FILES_JSON: ${{ needs.determine-build.outputs.files }}
+        run: bash scripts/release-gdo.sh
+
       - name: Commit firmware, manifests, and firmware index
         run: |
           git config --global user.name "GitHub Actions"
@@ -432,68 +443,3 @@ jobs:
               sleep 10
             done
           fi
-
-      - name: Create GDO releases
-        if: github.event.inputs.generate_json_only != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-          ESPHOME_DEV: ${{ github.event.inputs.esphome_dev }}
-          ESPHOME_VERSION: ${{ needs.determine-build.outputs.version }}
-          FILES_JSON: ${{ needs.determine-build.outputs.files }}
-        run: |
-          source scripts/configs.sh
-
-          repo="CircuitSetup/circuitsetup-esphome"
-          branch="master"
-          if [[ "${ESPHOME_DEV:-false}" == "true" ]]; then
-            status=$(curl -s -o /dev/null -w "%{http_code}" "https://api.github.com/repos/${repo}/branches/dev")
-            [[ "$status" == "200" ]] && branch="dev"
-          fi
-
-          for config in circuitsetup-gdo-default.yaml circuitsetup-gdo-dry-contact.yaml; do
-            jq -e --arg config "$config" 'index($config) != null' <<< "$FILES_JSON" >/dev/null || continue
-            binary="firmware/${config%.yaml}-${ESPHOME_VERSION}.bin"
-            [[ -f "$binary" ]] || continue
-
-            if [[ "$config" == "circuitsetup-gdo-default.yaml" ]]; then
-              base="circuitsetup-secplus-garage-door-opener"
-              friendly="CircuitSetup Security+ Garage Door Opener"
-              project_version=$(fetch_config_source_version "$config" master)
-            else
-              base="circuitsetup-gdo-dry-contact"
-              friendly="CircuitSetup Garage Door Opener Dry Contact"
-              project_version=$(fetch_config_source_version "$config" "$branch")
-            fi
-
-            tag="${base}-v${project_version}-esphome-v${ESPHOME_VERSION}"
-            if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
-              echo "Release $tag already exists. Skipping."
-              continue
-            fi
-
-            notes="Built with ESPHome ${ESPHOME_VERSION}"
-            if [[ "$config" == "circuitsetup-gdo-default.yaml" ]]; then
-              previous_tag=$(gh release list --repo "$repo" --limit 100 --json tagName,publishedAt \
-                | jq -r --arg prefix "${base}-v" \
-                  '[.[] | select(.tagName | startswith($prefix))] | sort_by(.publishedAt) | last | .tagName // empty')
-
-              if [[ -n "$previous_tag" ]]; then
-                current_gdolib=$(curl -fsSL "$(config_raw_url "$config" "$branch" version)" \
-                  | bash scripts/gdolib-release-notes.sh --extract)
-                previous_gdolib=$(curl -fsSL \
-                  "https://raw.githubusercontent.com/${repo}/${previous_tag}/${CONFIG_VERSION_PATH[$config]}" \
-                  | bash scripts/gdolib-release-notes.sh --extract)
-
-                if [[ -n "$current_gdolib" && -n "$previous_gdolib" ]]; then
-                  gdolib_notes=$(bash scripts/gdolib-release-notes.sh "$previous_gdolib" "$current_gdolib")
-                  [[ -n "$gdolib_notes" ]] && notes+=$'\n\n'"$gdolib_notes"
-                fi
-              fi
-            fi
-
-            gh release create "$tag" "$binary" \
-              --repo "$repo" \
-              --title "$friendly v${project_version} - ESPHome v${ESPHOME_VERSION}" \
-              --notes "$notes" \
-              --generate-notes
-          done

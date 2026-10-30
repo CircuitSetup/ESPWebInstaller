@@ -41,7 +41,7 @@ declare -A CONFIG_VERSION_KEY
 for config in "${!CONFIG_META[@]}"; do
   if [[ "$config" == circuitsetup-gdo-default.yaml ]]; then
     CONFIG_REPO["$config"]="CircuitSetup/circuitsetup-esphome"
-    CONFIG_DOWNLOAD_PATH["$config"]="$config"
+    CONFIG_DOWNLOAD_PATH["$config"]="circuitsetup-secplus-garage-door-opener.yaml"
     CONFIG_VERSION_PATH["$config"]="circuitsetup-secplus-garage-door-opener.yaml"
     CONFIG_VERSION_KEY["$config"]="project_version"
   elif [[ "$config" == circuitsetup-gdo-dry-contact.yaml ]]; then
@@ -75,13 +75,64 @@ extract_yaml_scalar() {
   sed -nE "s/.*(^|[[:space:]])${key}:[[:space:]]*[\"']?([^\"'[:space:]#]+).*/\2/p" | head -n 1
 }
 
-fetch_config_source_version() {
-  local config="$1"
-  local branch="$2"
-  local url
+# Capture versions before compiling; source_ref records provenance, not a trigger.
+config_source_state() {
+  local config="$1" source_ref="$2" project_version gdolib_version
+  project_version=$(extract_yaml_scalar "${CONFIG_VERSION_KEY[$config]}")
+  [[ "$project_version" =~ ^[0-9]+(\.[0-9]+)+([a-zA-Z0-9.+-]*)$ ]] || {
+    echo "Missing or invalid source version for $config" >&2
+    return 1
+  }
 
-  url=$(config_raw_url "$config" "$branch" version)
-  curl -fsSL "$url" | extract_yaml_scalar "${CONFIG_VERSION_KEY[$config]}"
+  if [[ "$config" == circuitsetup-gdo-* ]]; then
+    if [[ "$config" == circuitsetup-gdo-default.yaml ]]; then
+      gdolib_version=$(curl -fsSL https://raw.githubusercontent.com/CircuitSetup/gdolib/master/library.json \
+        | jq -er '.version | select(type == "string" and test("^[0-9]+\\.[0-9]+\\.[0-9]+([a-zA-Z0-9.+-]*)$"))') || return 1
+      jq -cnS --arg project_version "$project_version" --arg source_ref "$source_ref" \
+        --arg gdolib_version "$gdolib_version" \
+        '{project_version: $project_version, source_ref: $source_ref, gdolib_version: $gdolib_version}'
+    else
+      jq -cnS --arg project_version "$project_version" --arg source_ref "$source_ref" \
+        '{project_version: $project_version, source_ref: $source_ref}'
+    fi
+  else
+    jq -cn --arg version "$project_version" '$version'
+  fi
+}
+
+fetch_config_source_state() {
+  curl -fsSL "$(config_raw_url "$1" "$2" version)" | config_source_state "$1" "$2"
+}
+
+source_state_version() {
+  local config="$1" state="$2"
+  if [[ "$config" == circuitsetup-gdo-* ]]; then
+    jq -cS 'if type == "string" then {project_version: .} elif type == "object" then del(.source_ref) else . end' <<< "$state"
+  else
+    jq -cS . <<< "$state"
+  fi
+}
+
+prepare_gdo_config() {
+  local path="$1" state="$2" source_ref gdolib_version
+  source_ref=$(jq -er '.source_ref | select(test("^[0-9a-f]{40}$"))' <<< "$state") || return 1
+  sed -i -E "/package_import_url:/!s/@master/@${source_ref}/g; s/ref: master/ref: ${source_ref}/g" "$path"
+  gdolib_version=$(jq -r '.gdolib_version // empty' <<< "$state")
+  if [[ -n "$gdolib_version" ]]; then
+    sed -i -E "s|(gdolib=https://github.com/CircuitSetup/gdolib#)[^\"'[:space:]]+|\\1v${gdolib_version}|g" "$path"
+    grep -Fq "gdolib=https://github.com/CircuitSetup/gdolib#v${gdolib_version}\"" "$path"
+  fi
+}
+
+gdo_release_tag() {
+  local config="$1" esphome_version="$2" state="$3" base project_version gdolib_version
+  base="${config%.yaml}"
+  [[ "$config" != circuitsetup-gdo-default.yaml ]] || base="circuitsetup-secplus-garage-door-opener"
+  project_version=$(jq -er '.project_version' <<< "$state") || return 1
+  gdolib_version=$(jq -r '.gdolib_version // empty' <<< "$state")
+  printf '%s-v%s-esphome-v%s' "$base" "$project_version" "$esphome_version"
+  [[ -z "$gdolib_version" ]] || printf -- '-gdolib-v%s' "$gdolib_version"
+  printf '\n'
 }
 
 # Flat list of config file names
