@@ -104,7 +104,7 @@ class GdoReleasesTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "gdo.yaml"
             path.write_text(SOURCE, encoding="utf-8")
-            result = self.shell('prepare_gdo_config "$CONFIG_PATH" "$STATE"',
+            result = self.shell('curl() { return 0; }; prepare_gdo_config "$CONFIG_PATH" "$STATE"',
                                 CONFIG_PATH=path.as_posix(), STATE=json.dumps(self.state()))
             self.assertEqual(result.returncode, 0, result.stderr)
             config = path.read_text(encoding="utf-8")
@@ -113,6 +113,34 @@ class GdoReleasesTest(unittest.TestCase):
             self.assertIn("gdolib#v1.4.0", config)
             self.assertNotIn("gdolib#v1.3.2", config)
             self.assertIn("circuitsetup-secplus-garage-door-opener.yaml@master", config)
+
+    def test_build_accepts_component_managed_gdolib(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "gdo.yaml"
+            path.write_text(SOURCE.split("esphome:")[0], encoding="utf-8")
+            result = self.shell(
+                'curl() { printf \'GDOLIB_REPOSITORY = "https://github.com/CircuitSetup/gdolib#v1.4.0"\\n\'; }; '
+                'prepare_gdo_config "$CONFIG_PATH" "$STATE"',
+                CONFIG_PATH=path.as_posix(), STATE=json.dumps(self.state()),
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            config = path.read_text(encoding="utf-8")
+            self.assertIn(f"circuitsetup-esphome@{SOURCE_REF}", config)
+            self.assertNotIn("lib_deps", config)
+            self.assertIn("circuitsetup-secplus-garage-door-opener.yaml@master", config)
+
+    def test_component_pin_must_match_detected_gdolib_version(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "gdo.yaml"
+            path.write_text(SOURCE, encoding="utf-8")
+            result = self.shell(
+                'curl() { printf \'GDOLIB_REPOSITORY = "https://github.com/CircuitSetup/gdolib#v1.3.2"\\n\'; }; '
+                'prepare_gdo_config "$CONFIG_PATH" "$STATE"',
+                CONFIG_PATH=path.as_posix(), STATE=json.dumps(self.state()),
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("v1.3.2", result.stderr)
+            self.assertIn("v1.4.0", result.stderr)
 
     def test_library_only_bump_gets_a_distinct_release_tag(self):
         tags = []

@@ -114,13 +114,24 @@ source_state_version() {
 }
 
 prepare_gdo_config() {
-  local path="$1" state="$2" source_ref gdolib_version
+  local path="$1" state="$2" source_ref gdolib_version component_gdolib
   source_ref=$(jq -er '.source_ref | select(test("^[0-9a-f]{40}$"))' <<< "$state") || return 1
   sed -i -E "/package_import_url:/!s/@master/@${source_ref}/g; s/ref: master/ref: ${source_ref}/g" "$path"
   gdolib_version=$(jq -r '.gdolib_version // empty' <<< "$state")
   if [[ -n "$gdolib_version" ]]; then
-    sed -i -E "s|(gdolib=https://github.com/CircuitSetup/gdolib#)[^\"'[:space:]]+|\\1v${gdolib_version}|g" "$path"
-    grep -Fq "gdolib=https://github.com/CircuitSetup/gdolib#v${gdolib_version}\"" "$path"
+    component_gdolib=$(curl -fsSL "https://raw.githubusercontent.com/CircuitSetup/circuitsetup-esphome/${source_ref}/components/secplus_gdo/__init__.py" \
+      | sed -nE '/^GDOLIB_REPOSITORY[[:space:]]*=/p' \
+      | bash "$(dirname "${BASH_SOURCE[0]}")/gdolib-release-notes.sh" --extract) || return 1
+    if [[ -n "$component_gdolib" && "$component_gdolib" != "v${gdolib_version}" ]]; then
+      echo "GDO component pins $component_gdolib; waiting for it to support detected gdolib v${gdolib_version}." >&2
+      return 1
+    fi
+    if grep -Fq 'gdolib=https://github.com/CircuitSetup/gdolib#' "$path"; then
+      sed -i -E "s|(gdolib=https://github.com/CircuitSetup/gdolib#)[^\"'[:space:]]+|\\1v${gdolib_version}|g" "$path"
+    elif [[ -z "$component_gdolib" ]]; then
+      echo "Could not determine the GDO component's gdolib dependency." >&2
+      return 1
+    fi
   fi
 }
 

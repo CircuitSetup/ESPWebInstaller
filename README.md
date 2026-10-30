@@ -16,6 +16,9 @@ example, `v1.4.0`); if that tag is not yet available, the build fails and retrie
 the next scheduled check. Security+ release tags include the gdolib version so a
 library-only update can produce its own release. The installer continues to use
 ESPHome versions for firmware filenames and manifests.
+Newer Security+ components manage the gdolib pin themselves. Their pinned version
+must match the detected gdolib version before publication; the workflow waits for
+upstream compatibility rather than publishing a release with the wrong version.
 
 Publishing requires the existing `RELEASE_TOKEN` repository secret with permission
 to create releases in `CircuitSetup/circuitsetup-esphome`. A failed release does
