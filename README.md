@@ -22,3 +22,12 @@ to create releases in `CircuitSetup/circuitsetup-esphome`. A failed release does
 not advance `manifests/source_versions.json`; the next check retries it. ESPHome
 development builds do not publish stable GDO releases. For a manual rebuild, run
 the workflow with **firmware_family: gdo** and **force_build: true**.
+
+The installer shows **View firmware release** for the selected GDO variant and
+ESPHome version. Each manifest records its exact `release_url`; publication adds
+the link only after the release and binary are available. Existing retained GDO
+manifests were matched to their release assets by SHA-256, including releases
+that share the same ESPHome version. If release metadata is unavailable, the
+installer keeps installation available and hides the release link.
+An existing release is linked only when its asset checksum matches the installer
+binary; same-version rebuilds with different bytes keep their release link hidden.

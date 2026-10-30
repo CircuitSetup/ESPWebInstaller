@@ -170,7 +170,7 @@ class GdoReleasesTest(unittest.TestCase):
                 outputs = dict(line.split("=", 1) for line in output.read_text().splitlines())
                 self.assertEqual(json.loads(outputs["files"]), expected)
 
-    def release(self, *, exists="false", assets="", create_status="0"):
+    def release(self, *, exists="false", assets=None, create_status="0", expected_link=True):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "firmware").mkdir()
@@ -179,11 +179,16 @@ class GdoReleasesTest(unittest.TestCase):
             (root / "manifests").mkdir()
             snapshot = root / "manifests/source_versions.json"
             snapshot.write_text(json.dumps({SECPLUS: self.state()}), encoding="utf-8")
+            manifest = root / "manifests/manifest_circuitsetup-gdo-default-2026.10.1.json"
+            metadata = {"version": "2026.10.1", "builds": []}
+            if not expected_link:
+                metadata["release_url"] = "https://github.com/CircuitSetup/circuitsetup-esphome/releases/tag/stale"
+            manifest.write_text(json.dumps(metadata), encoding="utf-8")
             before = snapshot.read_bytes()
             result = self.shell('''
 gh() {
   case "$1 $2" in
-    'release view') [[ "$EXISTS" == true ]] || return 1; printf '%s' "$ASSETS" ;;
+    'api repos/CircuitSetup/circuitsetup-esphome/releases/tags/'*) [[ "$EXISTS" == true ]] || return 1; printf '%s' "$RELEASE_JSON" ;;
     'release list') printf '[]' ;;
     'release create') printf 'created %s\n' "$3"; return "$CREATE_STATUS" ;;
     'release upload') printf 'uploaded %s\n' "$4" ;;
@@ -192,8 +197,15 @@ gh() {
 }
 source "$REPO/scripts/release-gdo.sh"
 ''', cwd=root, FILES_JSON=json.dumps([SECPLUS]), ESPHOME_VERSION="2026.10.1",
-                ESPHOME_DEV="false", EXISTS=exists, ASSETS=assets, CREATE_STATUS=create_status)
+                ESPHOME_DEV="false", EXISTS=exists, RELEASE_JSON=json.dumps({"assets": assets or []}), CREATE_STATUS=create_status)
             self.assertEqual(snapshot.read_bytes(), before)
+            linked_release = json.loads(manifest.read_text()).get("release_url")
+            if result.returncode == 0 and expected_link:
+                self.assertEqual(linked_release,
+                    "https://github.com/CircuitSetup/circuitsetup-esphome/releases/tag/"
+                    "circuitsetup-secplus-garage-door-opener-v1.6.0-esphome-v2026.10.1-gdolib-v1.4.0")
+            else:
+                self.assertIsNone(linked_release)
             return result
 
     def test_release_creation_uses_captured_version(self):
@@ -207,10 +219,24 @@ source "$REPO/scripts/release-gdo.sh"
         self.assertIn("uploaded firmware/circuitsetup-gdo-default-2026.10.1.bin", result.stdout)
 
     def test_complete_release_is_not_republished(self):
-        result = self.release(exists="true", assets="circuitsetup-gdo-default-2026.10.1.bin\n")
+        import hashlib
+        result = self.release(exists="true", assets=[{
+            "name": "circuitsetup-gdo-default-2026.10.1.bin",
+            "digest": "sha256:" + hashlib.sha256(b"firmware").hexdigest(),
+        }])
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertNotIn("uploaded", result.stdout)
         self.assertNotIn("created", result.stdout)
+
+    def test_different_or_unverifiable_release_binary_is_not_linked(self):
+        for digest in ("sha256:" + "0" * 64, None):
+            with self.subTest(digest=digest):
+                result = self.release(exists="true", expected_link=False, assets=[{
+                    "name": "circuitsetup-gdo-default-2026.10.1.bin", "digest": digest,
+                }])
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotIn("uploaded", result.stdout)
+                self.assertNotIn("created", result.stdout)
 
     def test_publication_failure_is_not_swallowed(self):
         result = self.release(create_status="1")

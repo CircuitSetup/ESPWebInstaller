@@ -167,6 +167,9 @@
       <select id="version-select" disabled>
         <option value="">Select meter options or GDO first</option>
       </select>
+      <p id="release-notes" class="hidden">
+        <a id="release-link" target="_blank" rel="noopener noreferrer">View firmware release</a>
+      </p>
       <p class="button-row" align="center">
         <esp-web-install-button class="invisible"></esp-web-install-button>
       </p>
@@ -303,6 +306,7 @@
         versionSelect.disabled = true;
         installButton.manifest = "";
         installButton.classList.add("invisible");
+        versionSelect.dispatchEvent(new Event("change"));
       }
 
       function populateVersionSelect(versionSelect, installButton, resolvedVersions) {
@@ -395,6 +399,8 @@
       
         const versionSelect = document.getElementById("version-select");
         const installButton = document.querySelector("esp-web-install-button");
+        const releaseNotes = document.getElementById("release-notes");
+        const releaseLink = document.getElementById("release-link");
         const meterAddonSelect = document.getElementById("meter-addon-select");
         const meterConnectionSelect = document.getElementById("meter-connection-select");
 
@@ -432,8 +438,10 @@
         meterAddonSelect.addEventListener("change", updateMeterSelection);
         meterConnectionSelect.addEventListener("change", updateMeterSelection);
       
-        versionSelect.addEventListener("change", () => {
+        versionSelect.addEventListener("change", async () => {
           const selectedManifest = versionSelect.value;
+          releaseNotes.classList.add("hidden");
+          releaseLink.removeAttribute("href");
       
           if (selectedManifest) {
             installButton.manifest = selectedManifest;
@@ -441,6 +449,20 @@
           } else {
             installButton.manifest = "";
             installButton.classList.add("invisible");
+          }
+
+          if (!selectedManifest) return;
+          try {
+            const response = await fetch(selectedManifest);
+            if (!response.ok) return;
+            const manifest = await response.json();
+            if (versionSelect.value !== selectedManifest) return;
+            if (manifest.release_url?.startsWith("https://github.com/CircuitSetup/circuitsetup-esphome/releases/tag/")) {
+              releaseLink.href = manifest.release_url;
+              releaseNotes.classList.remove("hidden");
+            }
+          } catch {
+            // Missing release metadata must not prevent installing firmware.
           }
         });
 
