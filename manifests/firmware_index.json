@@ -243,6 +243,8 @@
     "productId": "circuitsetup-gdo-default",
     "name": "CircuitSetup Security+ Garage Door Opener",
     "versions": [
+      { "version": "2026.10.2" }
+,
       { "version": "2026.10.1" }
 ,
       { "version": "2026.10.0" }
@@ -250,8 +252,6 @@
       { "version": "2026.9.1" }
 ,
       { "version": "2026.9.0" }
-,
-      { "version": "2026.8.2" }
     ]
   }
 ,
@@ -291,6 +291,8 @@
     "productId": "circuitsetup-gdo-dry-contact",
     "name": "CircuitSetup Garage Door Opener Dry Contact",
     "versions": [
+      { "version": "2026.10.2" }
+,
       { "version": "2026.10.1" }
 ,
       { "version": "2026.10.0" }
@@ -298,8 +300,6 @@
       { "version": "2026.9.1" }
 ,
       { "version": "2026.9.0" }
-,
-      { "version": "2026.8.2" }
     ]
   }
 ,
